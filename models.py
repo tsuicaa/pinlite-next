@@ -99,6 +99,7 @@ class Pin(Base):
             "visibility IN ('public', 'private')",
             name="pins_visibility_check",
         ),
+        Index("pins_visbility_id_index", "visibility", "id"),
     )
 
     id: Mapped[int] = mapped_column(
