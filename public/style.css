@@ -1,0 +1,269 @@
+body { color: #000; background: #C0C0C0; }
+[hidden] { display: none !important; }
+
+hr {
+  color: #9A9A9A;
+  border-top-style: solid;
+  border-bottom-style: solid;
+  border-bottom-color: #eee;
+}
+
+h1 { 
+  text-align:center; 
+  font-size: 2.5em; 
+  margin-bottom: 0; 
+}
+
+h3 { 
+  text-align:center; 
+  margin-top: 0; 
+}
+
+form { 
+  text-align: center; 
+  margin: 2em;
+}
+
+input { 
+  max-width: 55vw; 
+  border-radius: 0; 
+}
+
+#query {
+  width: 24em;
+}
+
+input[type="checkbox" i] {
+  width: auto;
+}
+
+input[type="file"] {
+  font-family:'Times New Roman', Times, serif;
+}
+
+input::file-selector-button  {
+  border-radius: 0;
+}
+
+button { 
+  border-radius: 0; 
+}
+
+button.red {
+  background-color: #ff5b5b;
+}
+
+button.blue {
+  background-color: #5bb3ff;
+}
+
+button.green {
+  background-color: #5bff6f;
+}
+
+.caution {
+  background: #ff5b5b;
+  padding: 5px;
+}
+
+#board-import {
+  text-align: left;
+  padding: 0;
+  margin: 0;
+}
+
+#settings-panel {
+  position:fixed;
+  background-color: #C0C0C0;
+  border: 1px solid #000;
+  border-top-color: #eee;
+  border-left-color: #eee;
+  border-right-color: #9A9A9A;
+  border-bottom-color: #9A9A9A;
+  box-shadow: 1px 1px 0 #000;
+  z-index: 1000;
+  max-width: 400px;
+  padding: 5px;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  max-height: 100%;
+  overflow: auto;
+}
+
+
+#settings-panel .panel {
+  display: block;
+  padding: 5px;
+  break-inside: avoid;
+  border: 1px solid #000;
+  border-top-color: #eee;
+  border-left-color: #eee;
+  border-right-color: #9A9A9A;
+  border-bottom-color: #9A9A9A;
+}
+
+#settings-panel-close {
+  float: right;
+}
+
+#board-url {
+  width: 100%;
+}
+
+.grid {
+  position: relative;
+}
+
+.pin {
+  position: absolute;
+  display: block;
+  break-inside: avoid;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #00e;
+  text-align: left;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  border: 1px solid #000;
+  border-top-color: #eee;
+  border-left-color: #eee;
+  border-right-color: #9A9A9A;
+  border-bottom-color: #9A9A9A;
+}
+
+
+.pin p { 
+  border-top: 1px solid #9A9A9A;
+  margin: 0; 
+  padding: 4px;
+  overflow-wrap: anywhere; 
+}
+
+.pin img { 
+  display: block; 
+  width: 100%; 
+  height: auto; 
+}
+
+.pin img.failed { 
+  height: 150px; 
+  object-fit: contain;
+}
+
+.detail-card { 
+  margin: 16px 0; 
+  padding-bottom: 10px;
+  border: 1px solid #000;
+  border-top-color: #eee;
+  border-left-color: #eee;
+  border-right-color: #9A9A9A;
+  border-bottom-color: #9A9A9A;
+}
+
+.detail-card .inner {
+  padding: 8px;
+  padding-bottom: 22px;
+}
+
+.detail-card .favorites-panel {
+  float: left;
+}
+
+.detail-card .links-panel {
+  float: right;
+}
+
+
+#detail .image-wrapper { 
+  display: block; 
+  width: 100%; 
+  height: auto; 
+  position: relative;
+}
+
+.image-wrapper > img { 
+  max-width: 100%; 
+  max-height: 70vh;
+  border-top-style: solid;
+  border-bottom-style: solid;
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  border-top-color: #eee;
+  border-bottom-color: #9A9A9A;
+  display: block;
+  margin: 0 auto;
+}
+
+.image-wrapper #ai-label {
+  width: 100%;
+  background: #ff5b5b;
+  position: absolute;
+  top: 0; left: 0;
+  margin: 0;
+  padding: 8px 0;
+  text-align:center;
+}
+
+#detail-video {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+#detail-description { 
+  white-space: pre-line; 
+  overflow-wrap: anywhere; 
+}
+
+#detail-image, #detail-title, #detail-description {
+  touch-action: pan-y pinch-zoom;
+}
+
+#feed-heading {
+  padding: 8px;
+  border: 1px solid #000;
+  border-top-color: #eee;
+  border-left-color: #eee;
+  border-right-color: #9A9A9A;
+  border-bottom-color: #9A9A9A;
+}
+
+.links a { 
+  margin-right: 1em; 
+}
+
+footer {
+   text-align: center; 
+}
+
+.tsu {
+  position: fixed;
+  bottom: -3px;
+}
+
+#loading-indicator {
+  position: relative;
+  text-align: center;
+  padding: 12px;
+  pointer-events: none;
+}
+
+.info {
+  border: none;
+  background: none;
+  font-weight: bold;
+}
+
+
+@media (max-width: 500px) { 
+  #detail-image {
+    max-height: inherit;
+  }
+
+}
