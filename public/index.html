@@ -17,6 +17,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?">
   <link rel="icon" type="image/x-icon" href="/favicon.ico?">
   <script src="/static/masonry.js" defer></script>
+  <script src="/static/account.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
@@ -43,6 +44,32 @@
       <br><br>
       <a href="https://github.com/namiisama/pinlite-feedback/issues" target="_blank"><button class="blue" type="button">Submit bug or request feature</button></a>
     </form>
+    <div id="account">
+        <form id="account-form">
+            <label>
+                Email
+                <input id="account-email" type="email" autocomplete="username" maxlength="256" required>
+            </label>
+            <label>
+                Password
+                <input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="64" required>
+            </label>
+            <label id="account-name-field" hidden>
+                Display name
+                <input id="account-name" type="text" autocomplete="nickname" maxlength="100">
+            </label>
+
+            <button id="account-submit" type="submit">Sign in</button>
+            <button id="account-switch" type="submit">Create account</button>
+        </form>
+
+        <div id="account-user" hidden>
+            Signed in as <span id="account-display-name"></span>
+            <button id="account-logout" type="button">Sign out</button>
+        </div>
+        <p id="account-status" role="status"></p>
+    </div>
+
     <div id="settings-panel" hidden>
       <button type="button" id="settings-panel-close">X</button>
       <br>

@@ -1,13 +1,25 @@
 import os
 from urllib.parse import quote
+from datetime import timedelta
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session as login_session
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import Session
-from models import Media, Pin
+from models import Media, Pin, User
+
+DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
 app = Flask(__name__, static_folder="public", static_url_path="/static")
+app.config.update(
+    SECRET_KEY=os.environ["SECRET_KEY"],
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE") == "1",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+)
 
 def media_url(key):
     base = os.environ.get("MEDIA_BASE_URL", "").rstrip("/")
@@ -31,6 +43,16 @@ def serialize_pin(pin, media):
         "width": media.width,
         "height": media.height,
     }
+
+
+@app.before_request
+def require_api_json():
+    if (
+        request.path.startswith("/api/")
+        and request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        and not request.is_json
+    ):
+        return jsonify(error="Send application/json"), 415
 
 @app.get("/")
 def index():
@@ -90,4 +112,125 @@ def pin_detail(pin_id):
             return jsonify(error="Pin not found"), 404
 
         return jsonify(serialize_pin(*row))
-    
+
+@app.post("/api/register")
+def register():
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    email = data.get("email")
+    password = data.get("password")
+    name = data.get("display_name")
+
+    if not all(isinstance(value, str) for value in (email, password, name)):
+        return jsonify(error="Email, password, display name required"), 400
+
+    email = email.strip().lower()
+    name = name.strip()
+
+    if (
+        len(email) > 256
+        or email.count("@") != 1
+        or not all(email.split("@"))
+        or any(char.isspace() for char in email)
+    ):
+        return jsonify(error="Invalid email address"), 400
+
+    if not 1 <= len(name) <= 32:
+        return jsonify(error="Display name needs to be 1-32 characters"), 400
+
+    if not 8 <= len(password) <= 64:
+        return jsonify(error="Password needs to be 8-64 characters"), 400
+
+    password_hash = generate_password_hash(password)
+
+    try:
+        with Session.begin() as db:
+            user = User(
+                email=email,
+                display_name=name,
+                password_hash=password_hash,
+            )
+            db.add(user)
+            db.flush()
+            user_id = user.id
+    except IntegrityError:
+        return jsonify(error="Email already used"), 409
+
+    login_session.clear()
+    login_session["user_id"] = user_id
+    login_session.permanent = True
+
+    return jsonify(user={
+        "id": str(user_id),
+        "display_name": name,
+    }), 201
+
+
+@app.get("/api/me")
+def current_user():
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(user=None)
+
+    with Session() as db:
+        user = db.get(User, user_id)
+
+        if user is not None:
+            return jsonify(user={
+                "id": str(user.id),
+                "display_name": user.display_name,
+            })
+
+    login_session.clear()
+    return jsonify(user=None)
+
+@app.post("/api/login")
+def login():
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    email = data.get("email")
+    password = data.get("password")
+
+    if not isinstance(email, str) or not isinstance(password, str):
+        return jsonify(error="Email and password required"), 400
+
+    email = email.strip().lower()
+
+    if len(email) > 256 or not 8 <= len(password) <= 64:
+        return jsonify(error="Invalid email or password"), 401
+
+    with Session() as db:
+        user = db.scalar(select(User).where(User.email == email))
+        stored_hash = (
+            user.password_hash
+            if user is not None and user.password_hash
+            else DUMMY_PASSWORD_HASH
+        )
+        valid = check_password_hash(stored_hash, password)
+
+        if user is None or not user.password_hash or not valid:
+            return jsonify(error="Invalid email or password"), 401
+
+        result = {
+            "id": str(user.id),
+            "display_name": user.display_name,
+        }
+        user_id = user.id
+
+    login_session.clear()
+    login_session["user_id"] = user_id
+    login_session.permanent = True
+
+    return jsonify(user=result)
+
+@app.post("/api/logout")
+def logout():
+    login_session.clear()
+    return jsonify(user=None)
