@@ -79,72 +79,77 @@ let detailController = null;
 let feedScroll = 0;
 
 async function showRoute() {
-  detailController?.abort();
+    detailController?.abort();
 
-  const pinId = new URLSearchParams(location.search).get("pin");
-  const showingDetail = pinId !== null;
+    const params = new URLSearchParams(location.search);
+    const pinId = params.get("pin");
+    const showingDetail = pinId !== null;
+    const showingCollections = !showingDetail
+        && params.get("view") === "collections";
+    const showingHome = !showingDetail && !showingCollections;
 
-  if (showingDetail && !$("detail").hidden) {
-    feedScroll = window.scrollY;
-  } else if (showingDetail) {
-    feedScroll = window.scrollY;
-  }
-
-  $("detail").hidden = !showingDetail;
-  grid.hidden = showingDetail;
-  $("sentinel").hidden = showingDetail;
-
-  if (!showingDetail) {
-    requestAnimationFrame(() => window.scrollTo(0, feedScroll));
-    return;
-  }
-
-  window.scrollTo(0, 0);
-  $("detail-title").textContent = "";
-  $("detail-description").textContent = "";
-  $("detail-image").hidden = true;
-  $("detail-image").removeAttribute("src");
-  $("source-link").hidden = true;
-  $("detail-status").textContent = "Loading…";
-
-  detailController = new AbortController();
-  const controller = detailController;
-
-  try {
-    const response = await fetch(
-      `/api/pins/${encodeURIComponent(pinId)}`,
-      { signal: controller.signal }
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        response.status === 404 ? "Pin not found" : "Could not load pin."
-      );
+    if (!grid.hidden && !showingHome) {
+        feedScroll = window.scrollY;
     }
 
-    const pin = await response.json();
-    if (controller.signal.aborted) return;
+    $("detail").hidden = !showingDetail;
+    $("collections-panel").hidden = !showingCollections;
+    grid.hidden = !showingHome;
+    $("sentinel").hidden = !showingHome;
 
-    $("detail-title").textContent = pin.title;
-    $("detail-description").textContent = pin.description;
-    $("detail-image").src = pin.image;
-    $("detail-image").alt = pin.title;
-    $("detail-image").hidden = false;
-    $("detail-status").textContent = "";
-
-    if (pin.source_url) {
-      const source = new URL(pin.source_url);
-
-      if (["http:", "https:"].includes(source.protocol)) {
-        $("source-link").href = source.href;
-        $("source-link").hidden = false;
-      }
+    if (!showingDetail) {
+        requestAnimationFrame(() => {
+            window.scrollTo(0, showingHome ? feedScroll : 0);
+        });
+        return;
     }
-  } catch (error) {
-    if (error.name !== "AbortError") {
-      $("detail-status").textContent = error.message;
+
+    window.scrollTo(0, 0);
+    $("detail-title").textContent = "";
+    $("detail-description").textContent = "";
+    $("detail-image").hidden = true;
+    $("detail-image").removeAttribute("src");
+    $("source-link").hidden = true;
+    $("detail-status").textContent = "Loading…";
+
+    detailController = new AbortController();
+    const controller = detailController;
+
+    try {
+        const response = await fetch(
+        `/api/pins/${encodeURIComponent(pinId)}`,
+        { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+        throw new Error(
+            response.status === 404 ? "Pin not found" : "Could not load pin."
+        );
+        }
+
+        const pin = await response.json();
+        if (controller.signal.aborted) return;
+
+        $("detail-title").textContent = pin.title;
+        $("detail-description").textContent = pin.description;
+        $("detail-image").src = pin.image;
+        $("detail-image").alt = pin.title;
+        $("detail-image").hidden = false;
+        $("detail-status").textContent = "";
+
+        if (pin.source_url) {
+        const source = new URL(pin.source_url);
+
+        if (["http:", "https:"].includes(source.protocol)) {
+            $("source-link").href = source.href;
+            $("source-link").hidden = false;
+        }
+        }
+    } catch (error) {
+        if (error.name !== "AbortError") {
+        $("detail-status").textContent = error.message;
+        }
     }
-  }
 }
 
 loadMore.addEventListener("click", loadPins);
@@ -153,6 +158,11 @@ $("back").addEventListener("click", () => {
   history.pushState(null, "", "/");
   showRoute();
 });
+
+$("saved-pins").addEventListener("click", () => {
+    history.pushState(null, "", "/?view=collections");
+    showRoute();
+})
 
 window.addEventListener("popstate", showRoute);
 

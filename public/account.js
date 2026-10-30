@@ -16,6 +16,10 @@
         get("account-user").hidden = !user;
         get("account-display-name").textContent = user?.display_name || "";
         password.value = "";
+
+        document.dispatchEvent(new CustomEvent("account-change", {
+            detail: user,
+        }));
     }
 
     async function api(path, data) {

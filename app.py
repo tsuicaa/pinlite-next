@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import Session
-from models import Media, Pin, User
+from models import Collection, Media, Pin, User
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -234,3 +234,69 @@ def login():
 def logout():
     login_session.clear()
     return jsonify(user=None)
+
+
+@app.get("/api/collections")
+def list_collections():
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    query = (
+        select(Collection)
+        .where(Collection.owner_id == user_id)
+        .order_by(Collection.id.desc())
+    )
+
+    with Session() as db:
+        collections = [
+            {
+                "id": str(collection.id),
+                "name": collection.name,
+                "visibility": collection.visibility,
+                "parent_id": (
+                    str(collection.parent_id)
+                    if collection.parent_id is not None
+                    else None
+                ),
+            }
+            for collection in db.scalars(query)
+        ]
+
+    return jsonify(collections=collections)
+
+@app.post("/api/collections")
+def create_collection():
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    name = data.get("name")
+
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 200:
+        return jsonify(error="Name must be 1-200 characters"), 400
+
+    with Session.begin() as db:
+        collection = Collection(
+            owner_id=user_id,
+            name=name.strip(),
+            visibility="private",
+        )
+        db.add(collection)
+        db.flush()
+
+        result = {
+            "id": str(collection.id),
+            "name": collection.name,
+            "visibility": collection.visibility,
+            "parent_id": None,
+        }
+
+    return jsonify(collection=result), 201
