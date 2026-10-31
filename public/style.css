@@ -1,6 +1,11 @@
 body { color: #000; background: #C0C0C0; }
 [hidden] { display: none !important; }
 
+
+* {
+  box-sizing: border-box;
+}
+
 hr {
   color: #9A9A9A;
   border-top-style: solid;
@@ -12,6 +17,12 @@ h1 {
   text-align:center; 
   font-size: 2.5em; 
   margin-bottom: 0; 
+}
+
+h2 {  
+  font-size: 1.5em;
+  font-family: serif;
+  font-weight: normal;
 }
 
 h3 { 
@@ -29,8 +40,121 @@ input {
   border-radius: 0; 
 }
 
+.panel {
+  background-color: #C0C0C0;
+  border: 1px solid #000;
+  border-top-color: #C3C3C3;
+  border-left-color: #C3C3C3;
+  border-right-color: #000;
+  border-bottom-color: #000;
+  padding: 12px;
+  position: relative;
+}
+
+.panel:before {
+  content: "";
+  position: absolute;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  top: 0px; left: 0px;  
+  border: 1px solid #000;
+  border-top-color: #fff;
+  border-left-color: #fff;
+  border-right-color: #828282;
+  border-bottom-color: #828282;
+  pointer-events: none;
+}
+
+.icon {
+  display: inline-block; 
+  width: 20px;
+  height: 20px;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  background-color: transparent;
+  filter: saturate(1);
+}
+
+button:hover > .icon {
+  filter: saturate(1);
+}
+
+.icon.user {
+  background-image: url("user.png");
+}
+.icon.pushpin {
+  background-image: url("pin.png");
+}
+.icon.settings {
+  background-image: url("settings.png");
+}
+
+header {
+  position: fixed;
+  height: 60px;
+  top: 0;
+  right: 0;
+  width: 100%;
+  background: #C0C0C0;
+  z-index: 1;
+}
+
+main {
+  padding-top: 60px;
+  margin: 0 auto;
+}
+
+header .inner{  
+  display: grid;
+  grid-template-columns: auto auto;
+  columns: 2;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  padding: 0px 8px;
+}
+
+header .title {
+  margin: .5em 0;
+  font-weight: bold;
+}
+
+.header-nav button {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+}
+
+#account {
+  position: fixed;
+  width: 220px;
+  z-index: 2;
+  right: 0;
+  top: 60px;
+}
+
+#account #account-form {
+  margin: 0;
+}
+
+.search-box {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: center;
+  align-items: center;
+  column-gap: 5px;
+}
+
+.search-box button {
+  height: 100%;
+}
+
 #query {
   width: 24em;
+  font-size: 1.5em;
+  font-family: serif;
+  padding: 6px;
 }
 
 input[type="checkbox" i] {
@@ -269,5 +393,4 @@ footer {
   #detail-image {
     max-height: inherit;
   }
-
 }

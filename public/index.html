@@ -22,13 +22,44 @@
         <script src="/static/app.js" defer></script>
     </head>
     <body>
-        <header>
-            <h1><a href="/">PinLite 2.0</a></h1>
-            <h3 id="subtitle"></h3>
+    <header>
+        <div class="inner">
+            <a href="/"><h2 class="title">PinLite 2.0</h2></a>
+            <div class="header-nav">
+                <button type="button" id="saved-pins"><i class="icon pushpin"></i></button>
+                <button id="settings" type="button"><i class="icon settings"></i></button>
+                <button type="button" id="account-button"><i class="icon user"></i></button>
+            </div>
+        </div>
+        <div id="account" class="panel" hidden>
+            <form id="account-actions" hidden>
+                <h2 id="account-display-name"></h2>
+                <button id="account-logout" type="button">Sign out</button>
+            </form>
+            <form id="account-form" hidden>
+                <h2>Login or register</h2>
+                <input id="account-email" type="email" autocomplete="username" maxlength="256" placeholder="Email" required>
+                <br><br>
+                <input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="64" placeholder="Password" required>
+                <br><br>
+                <input id="account-name" type="text" autocomplete="nickname" maxlength="100" placeholder="Display name" hidden>
+                <br><br>
+
+                <button id="account-submit" type="submit">Sign in</button>
+                <button id="account-switch" type="button">Create account</button>
+                
+                <p id="account-status" role="status"></p>
+            </form>
+        </div>
+    <hr>
+    </header>
+    <main>
+        <div class="search">
             <form id="search" role="search">
-            <label for="query">Search PinLite:</label>
-            <input id="query" name="q" type="text" required maxlength="200" autocomplete="off">
-            <button type="submit">Search</button>
+            <div class="search-box">
+                <input id="query" name="q" type="text" required maxlength="200" autocomplete="off" placeholder="Search PinLite">
+                <button type="submit">Search</button>
+            </div>
             <br><br>
             <input type="checkbox" id="exclude-ai" value="AI">
             <label for="exclude-ai">Exclude AI generated content</label><button class="info" title="AI filter is based on Pinterest's own labels and PinLite's user-reported AI database." disabled>ⓘ</button>
@@ -40,36 +71,10 @@
             <input type="checkbox" id="show-videos" checked>
             <label for="show-videos">Videos</label>
             <br><br>
-            <button id="saved-pins" type="button">Saved pins</button>
-            <button id="settings" type="button" aria-controls="settings-panel" aria-expanded="false">Settings</button>
             <br><br>
             <a href="https://github.com/namiisama/pinlite-feedback/issues" target="_blank"><button class="blue" type="button">Submit bug or request feature</button></a>
             </form>
-            <div id="account">
-                <form id="account-form">
-                    <label>
-                        Email
-                        <input id="account-email" type="email" autocomplete="username" maxlength="256" required>
-                    </label>
-                    <label>
-                        Password
-                        <input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="64" required>
-                    </label>
-                    <label id="account-name-field" hidden>
-                        Display name
-                        <input id="account-name" type="text" autocomplete="nickname" maxlength="100">
-                    </label>
-
-                    <button id="account-submit" type="submit">Sign in</button>
-                    <button id="account-switch" type="button">Create account</button>
-                </form>
-
-                <div id="account-user" hidden>
-                    Signed in as <span id="account-display-name"></span>
-                    <button id="account-logout" type="button">Sign out</button>
-                </div>
-                <p id="account-status" role="status"></p>
-            </div>
+            
 
             <div id="settings-panel" hidden>
             <button type="button" id="settings-panel-close">X</button>
@@ -159,9 +164,8 @@
                 <a href="themes/mytheme.css" target="_blank">Make your own!</a>
             </div>
             </div>
-        </header>
+        </div>
     <hr>
-    <main>
         <p id="report-status" role="status" aria-live="polite"></p>
         <section id="collections-panel" hidden>
             <h2>Your collections</h2>
@@ -183,7 +187,7 @@
             <p id="detail-description"></p>
             <p id="detail-status" role="status"></p>
             <hr>
-            
+
             <div class="favorites-panel">
                 <button id="save-pin" class="green" type="button" hidden>Save</button>
                 <span id="pin-folder-control" hidden>
@@ -222,7 +226,7 @@
         <p id="feed-count"></p>
         </div>
         <div id="loading-indicator" hidden aria-hidden="true">
-        <img src="/loading.gif" />
+        <img src="loading.gif" />
     </div>
 
         <div id="grid" class="grid" aria-label="Pins"></div>

@@ -4,6 +4,7 @@
     const form = get("account-form");
     const password = get("account-password");
     const name = get("account-name");
+    const accountButton = get("account-button");
     const submit = get("account-submit");
     const toggle = get("account-switch");
     const logout = get("account-logout");
@@ -12,8 +13,10 @@
     let registering = false;
 
     function showUser(user) {
-        form.hidden = Boolean(user);
-        get("account-user").hidden = !user;
+        const loggedIn = Boolean(user);
+
+        form.hidden = loggedIn;
+        get("account-actions").hidden = !loggedIn;
         get("account-display-name").textContent = user?.display_name || "";
         password.value = "";
 
@@ -38,10 +41,14 @@
         return result;
     }
 
+    accountButton.addEventListener("click", () => {
+        get("account").hidden = !get('account').hidden
+    })
+
     toggle.addEventListener("click", () => {
         registering = !registering;
 
-        get("account-name-field").hidden = !registering;
+        get("account-name").hidden = !registering;
         name.required = registering;
         password.autocomplete = registering
             ? "new-password"

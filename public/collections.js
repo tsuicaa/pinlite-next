@@ -62,6 +62,7 @@
     get("pin-folder-control").hidden = !available;
     save.disabled = saving || checkingSaved || !currentPin;
     save.textContent = checkingSaved ? "Checking..." : saved ? "Remove" : "Save";  
+    save.className = checkingSaved ? "" : saved ? "red" : "green";
     folders.disabled = saving;
   }
 
