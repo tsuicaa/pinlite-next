@@ -79,13 +79,132 @@
 
   function renderCollection(collection) {
     const item = document.createElement("li");
+    item.className = "pin collection-card";
     const link = document.createElement("a");
+    const preview = document.createElement("div");
+    const title = document.createElement("h2");
+    const controls = document.createElement("div");
+    const rename = document.createElement("button");
+    const remove = document.createElement("button");
 
     link.href = `/?collection=${encodeURIComponent(collection.id)}`;
-    link.textContent = collection.name;
-    item.append(link);
+    preview.className = "collection-preview";
+    preview.setAttribute("aria-hidden", "true");
+ 
+    if (collection.previews.length >= 4) {
+      for (let index = 0; index < 4; index++) {
+        const cell = document.createElement("div");
+        const url = collection.previews?.[index];
+
+        if (url) {
+          const image = document.createElement("img");
+          image.src = url;
+          image.alt = "";
+          image.loading = "lazy";
+          image.decoding = "async";
+          image.referrerPolicy = "no-referrer";
+          cell.append(image);
+        }
+
+        preview.append(cell);
+      }
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "empty-collection";
+      preview.append(empty);
+      preview.classList.add("empty");
+    }
+
+    title.textContent = collection.name;
+    link.append(preview, title);
+
+    rename.type = "button";
+    rename.textContent = "Rename";
+
+    remove.type = "button";
+    remove.textContent = "Delete";
+    remove.className = "red";
+
+    controls.className = "collection-controls";
+    controls.append(rename, " ", remove);
+    item.append(link, controls);
+
+    async function update(method, data) {
+      const version = accountVersion;
+      rename.disabled = true;
+      remove.disabled = true;
+      status.textContent = method === "DELETE" ? "Deleting..." : "Renaming...";
+
+      try {
+        const response = await fetch(`/api/collections/${collection.id}`, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Could not update collection");
+        }
+
+        if (version !== accountVersion) return;
+
+        const option = [...folders.options].find(
+          option => option.value === collection.id
+        );
+
+        if (method === "DELETE") {
+          item.remove();
+          option?.remove();
+          savedCollections.delete(collection.id);
+        } else {
+          collection.name = result.collection.name;
+          title.textContent = collection.name;
+
+          if (option) {
+            option.textContent = collection.name;
+        }
+      }
+
+      updateSaveControls();
+      status.textContent = list.children.length ? "" : "No collections yet";
+
+      document.dispatchEvent(new CustomEvent("collection-updated", {
+        detail: collection.id,
+      }));
+    } catch (error) {
+      if (version === accountVersion) {
+        status.textContent = error.message;
+      }
+    } finally {
+      rename.disabled = false;
+      remove.disabled = false;
+    }
+  }
     
-    return item;
+  rename.addEventListener("click", () => {
+    const entered = prompt("Collection name:", collection.name);
+    if (entered === null) return;
+
+    const name = entered.trim();
+
+    if (!name || name.length > 200) {
+      status.textContent = "Name must have 1-200 characters";
+      return;
+    }
+
+    if (name !== collection.name) {
+      update("PATCH", { name });
+    }
+  });
+
+  remove.addEventListener("click", () => {
+    if (confirm(`Delete "${collection.name}"? This does not delete the pins.`)) {
+      update("DELETE", {});
+    }
+  });
+
+  return item;
   }
 
   async function api(data) {

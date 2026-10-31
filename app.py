@@ -3,7 +3,7 @@ from urllib.parse import quote
 from datetime import timedelta
 
 from flask import Flask, jsonify, request, session as login_session
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -264,6 +264,27 @@ def list_collections():
             }
             for collection in db.scalars(query)
         ]
+        for collection in collections:
+            preview_query = (
+                select(Pin, Media)
+                .join(Media, Pin.media_id == Media.id)
+                .join(CollectionPin, CollectionPin.pin_id == Pin.id)
+                .where(
+                    CollectionPin.collection_id == int(collection["id"]),
+                    (
+                        (Pin.visibility == "public")
+                        | (Pin.creator_id == user_id)
+                    ),
+                )
+                .order_by(func.random())
+                .limit(4)
+            )
+
+            collection["previews"] = [
+                data["thumbnail"] or data["image"]
+                for pin, media in db.execute(preview_query)
+                if (data := serialize_pin(pin, media))["image"]
+            ]
 
     return jsonify(collections=collections)
 
@@ -466,3 +487,68 @@ def remove_from_collection(collection_id, pin_id):
         )
 
     return jsonify(saved=False)
+
+@app.patch("/api/collections/<int:collection_id>")
+def rename_collection(collection_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not 0 < collection_id <= 9223372036854775807:
+        return jsonify(error="Collection not found"), 404
+
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    name = data.get("name")
+
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 200:
+        return jsonify(error="Name must be 1-200 characters"), 400
+
+    with Session.begin() as db:
+        collection = db.scalar(
+            select(Collection).where(
+                Collection.id == collection_id,
+                Collection.owner_id == user_id,
+            )
+        )
+
+        if collection is None:
+            return jsonify(error="Collection not found"), 404
+
+        collection.name = name.strip()
+
+        result = {
+            "id": str(collection.id),
+            "name": collection.name,
+        }
+
+    return jsonify(collection=result)
+
+@app.delete("/api/collections/<int:collection_id>")
+def delete_collection(collection_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not 0 < collection_id <= 9223372036854775807:
+        return jsonify(error="Collection not found"), 404
+
+    with Session.begin() as db:
+        collection = db.scalar(
+            select(Collection).where(
+                Collection.id == collection_id,
+                Collection.owner_id == user_id,
+            )
+        )
+
+        if collection is None:
+            return jsonify(error="Collection not found"), 404
+
+        db.delete(collection)
+
+    return jsonify(deleted=True)
