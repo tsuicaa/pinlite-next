@@ -230,6 +230,11 @@ $("back").addEventListener("click", () => {
     showRoute();
 });
 
+$("saved-pins").addEventListener("click", () => {
+    history.pushState(null, "", "/?view=collections");
+    showRoute();
+})
+
 document.addEventListener("account-change", () => {
     if (new URLSearchParams(location.search).has("collection")) {
         resetFeed();
@@ -237,10 +242,17 @@ document.addEventListener("account-change", () => {
     }
 });
 
-$("saved-pins").addEventListener("click", () => {
-    history.pushState(null, "", "/?view=collections");
-    showRoute();
-})
+document.addEventListener("collection-updated", event => {
+    const params = new URLSearchParams(location.search);
+
+    if (params.get("collection") === event.detail) {
+        resetFeed();
+
+        if (!params.has("pin")) {
+            showRoute();
+        }
+    }
+});
 
 window.addEventListener("popstate", showRoute);
 

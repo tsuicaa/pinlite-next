@@ -60,8 +60,8 @@
 
     save.hidden = !available;
     get("pin-folder-control").hidden = !available;
-    save.disabled = saving || checkingSaved || !currentPin || saved;
-    save.textContent = checkingSaved ? "Checking..." : saved ? "Saved" : "Save";  
+    save.disabled = saving || checkingSaved || !currentPin;
+    save.textContent = checkingSaved ? "Checking..." : saved ? "Remove" : "Save";  
     folders.disabled = saving;
   }
 
@@ -177,23 +177,22 @@
   });
 
   save.addEventListener("click", async () => {
-    if (!currentPin || !folders.value || saving || checkingSaved
-      || savedCollections.has(folders.value)
-    ) return;
+    if (!currentPin || !folders.value || saving || checkingSaved) return;
 
     const pinId = currentPin;
     const collectionId = folders.value;
     const version = accountVersion;
+    const removing = savedCollections.has(collectionId);
 
     saving = true;
     updateSaveControls();
-    saveStatus.textContent = "Saving...";
+    saveStatus.textContent = removing ? "Removing..." : "Saving...";
 
     try {
       const response = await fetch (
         `/api/collections/${collectionId}/pins/${pinId}`,
         {
-          method: "PUT",
+          method: removing ? "DELETE" : "PUT",
           headers: { "Content-Type": "application/json" },
           body: "{}",
         }
@@ -202,12 +201,22 @@
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Could not save pin");
+        throw new Error(result.error || "Could not update collection");
       }
 
-      if (version === accountVersion && currentPin === pinId) {
-        savedCollections.add(collectionId);
-        saveStatus.textContent = "Saved";
+      if (version !== accountVersion) return;
+
+      document.dispatchEvent(new CustomEvent("collection-updated", {
+        detail: collectionId,
+      }));
+
+      if (currentPin === pinId) {
+        if (removing) {
+          savedCollections.delete(collectionId);
+        } else {
+          savedCollections.add(collectionId);
+        }
+        saveStatus.textContent = removing ? "Removed" : "Saved";
       }
     } catch (error) {
       if (version === accountVersion && currentPin === pinId) {

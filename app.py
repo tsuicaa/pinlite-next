@@ -3,7 +3,7 @@ from urllib.parse import quote
 from datetime import timedelta
 
 from flask import Flask, jsonify, request, session as login_session
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -436,3 +436,33 @@ def pin_collections(pin_id):
         collection_ids = [str(value) for value in db.scalars(query)]
 
     return jsonify(collection_ids=collection_ids)
+
+@app.delete("/api/collections/<int:collection_id>/pins/<int:pin_id>")
+def remove_from_collection(collection_id, pin_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not all(0 < value <= 9223372036854775807 for value in (collection_id, pin_id)):
+        return jsonify(error="Collection not found"), 404
+
+    with Session.begin() as db:
+        collection = db.scalar(
+            select(Collection).where(
+                Collection.id == collection_id,
+                Collection.owner_id == user_id,
+            )
+        )
+
+        if collection is None:
+            return jsonify(error="Collection not found"), 404
+
+        db.execute(
+            delete(CollectionPin).where(
+                CollectionPin.collection_id == collection_id,
+                CollectionPin.pin_id == pin_id,
+            )
+        )
+
+    return jsonify(saved=False)
