@@ -58,19 +58,17 @@
             <form id="search" role="search">
             <div class="search-box">
                 <input id="query" name="q" type="text" required maxlength="200" autocomplete="off" placeholder="Search PinLite">
-                <button type="submit">Search</button>
+                <button type="submit"><i class="icon search"></i>Search</button>
             </div>
             <br><br>
             <input type="checkbox" id="exclude-ai" value="AI">
-            <label for="exclude-ai">Exclude AI generated content</label><button class="info" title="AI filter is based on Pinterest's own labels and PinLite's user-reported AI database." disabled>ⓘ</button>
-            <br>
-            <br>
+            <label for="exclude-ai">Exclude AI content</label>
+            
             Show:
             <input type="checkbox" id="show-images" checked>
             <label for="show-images">Images</label>
             <input type="checkbox" id="show-videos" checked>
             <label for="show-videos">Videos</label>
-            <br><br>
             <br><br>
             <a href="https://github.com/namiisama/pinlite-feedback/issues" target="_blank"><button class="blue" type="button">Submit bug or request feature</button></a>
             </form>
