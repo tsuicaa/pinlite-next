@@ -8,13 +8,36 @@ const cards = new Map();
 
 let cursor = null;
 
+let feedPath = null;
+let feedController = null;
+
+function resetFeed() {
+    feedController?.abort();
+    feedController = null;
+    feedPath = null;
+    cursor = null;
+    cards.clear();
+    grid.replaceChildren();
+    $("heading").textContent = "";
+    status.textContent = "";
+    loadMore.hidden = true;
+}
+
 function renderPin(pin) {
   cards.set(pin.id, pin);
-
-
   const button = document.createElement('a');
   button.className = 'pin';
-  button.href = `/?pin=${encodeURIComponent(pin.id)}`;
+
+  const pinUrl= new URL("/", location.origin);
+  pinUrl.searchParams.set("pin", pin.id);
+
+  const collectionId = new URLSearchParams(location.search).get("collection");
+  if (collectionId) {
+    pinUrl.searchParams.set("collection", collectionId);
+  }
+
+  button.href = pinUrl.pathname + pinUrl.search;
+  
   button.dataset.pinId = pin.id;
   button.setAttribute('aria-label', `Open pin: ${pin.title}`);
   const image = document.createElement('img');
@@ -45,33 +68,49 @@ function renderPin(pin) {
 }
 
 async function loadPins() {
-  loadMore.disabled = true;
-  status.textContent = "Loading...";
+    if (feedController || !feedPath) return;
+
+    const controller = new AbortController();
+    feedController = controller;
+    loadMore.disabled = true;
+    status.textContent = "Loading...";
 
   try {
-    const url = new URL("/api/pins", location.origin);
+    const url = new URL(feedPath, location.origin);
 
     if (cursor) {
       url.searchParams.set("before", cursor);
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+        signal: controller.signal,
+    });
+    const data = await response.json();
 
     if (!response.ok) {
-      throw new Error("Cant load pins");
+      throw new Error(data.error || "Cant load pins");
     }
 
-    const data = await response.json();
+    if (controller.signal.aborted) return;
+    if (data.collection) {
+        $("heading").textContent = data.collection.name;
+    }
 
     grid.append(...data.pins.map(renderPin));
     cursor = data.next_cursor;
 
     loadMore.hidden = !cursor;
-    status.textContent = grid.childElementCount ? "" : "No pins";
+    status.textContent = grid.childElementCount ? "" : "No pins yet";
   } catch (error) {
-    status.textContent = error.message;
+    if (!controller.signal.aborted) {
+        status.textContent = error.message;
+        loadMore.hidden = false;
+    }
   } finally {
-    loadMore.disabled = false;
+    if (feedController === controller) {
+        feedController = null;
+        loadMore.disabled = false;
+    }
   }
 }
 
@@ -81,26 +120,47 @@ let feedScroll = 0;
 async function showRoute() {
     detailController?.abort();
 
+    document.dispatchEvent(new CustomEvent("pin-change", {
+        detail: null,
+    }));
+
+
     const params = new URLSearchParams(location.search);
     const pinId = params.get("pin");
+    const collectionId = params.get("collection");
+
     const showingDetail = pinId !== null;
     const showingCollections = !showingDetail
         && params.get("view") === "collections";
-    const showingHome = !showingDetail && !showingCollections;
+    const showingFeed = !showingDetail && !showingCollections;
 
-    if (!grid.hidden && !showingHome) {
+    if (!grid.hidden && !showingFeed) {
         feedScroll = window.scrollY;
     }
 
     $("detail").hidden = !showingDetail;
     $("collections-panel").hidden = !showingCollections;
-    grid.hidden = !showingHome;
-    $("sentinel").hidden = !showingHome;
+    $("feed-heading").hidden = !showingFeed || collectionId === null;
+    grid.hidden = !showingFeed;
+    $("sentinel").hidden = !showingFeed;
+
+    if (showingFeed) {
+        const path = collectionId !== null
+            ? `/api/collections/${encodeURIComponent(collectionId)}/pins`
+            : "/api/pins"
+
+        if (feedPath !== path) {
+            resetFeed();
+            feedPath = path;
+            feedScroll = 0;
+            loadPins();
+        }
+        requestAnimationFrame(() => window.scrollTo(0, feedScroll));
+        return;
+    }
 
     if (!showingDetail) {
-        requestAnimationFrame(() => {
-            window.scrollTo(0, showingHome ? feedScroll : 0);
-        });
+        window.scrollTo(0, 0);
         return;
     }
 
@@ -130,6 +190,10 @@ async function showRoute() {
         const pin = await response.json();
         if (controller.signal.aborted) return;
 
+        document.dispatchEvent(new CustomEvent("pin-change", {
+            detail: pin.id,
+        }));
+
         $("detail-title").textContent = pin.title;
         $("detail-description").textContent = pin.description;
         $("detail-image").src = pin.image;
@@ -155,8 +219,22 @@ async function showRoute() {
 loadMore.addEventListener("click", loadPins);
 
 $("back").addEventListener("click", () => {
-  history.pushState(null, "", "/");
-  showRoute();
+    const collectionId = new URLSearchParams(location.search)
+    .get("collection");
+
+    const destination = collectionId !== null
+        ? `/?collection=${encodeURIComponent(collectionId)}`
+        : "/";
+
+    history.pushState(null, "", destination);
+    showRoute();
+});
+
+document.addEventListener("account-change", () => {
+    if (new URLSearchParams(location.search).has("collection")) {
+        resetFeed();
+        showRoute();
+    }
 });
 
 $("saved-pins").addEventListener("click", () => {
@@ -168,4 +246,3 @@ window.addEventListener("popstate", showRoute);
 
 setupMasonry(grid);
 showRoute();
-loadPins();

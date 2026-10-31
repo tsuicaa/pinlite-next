@@ -5,10 +5,11 @@ from datetime import timedelta
 from flask import Flask, jsonify, request, session as login_session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import Session
-from models import Collection, Media, Pin, User
+from models import Collection, CollectionPin, Media, Pin, User
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -300,3 +301,138 @@ def create_collection():
         }
 
     return jsonify(collection=result), 201
+
+@app.put("/api/collections/<int:collection_id>/pins/<int:pin_id>")
+def save_to_collection(collection_id, pin_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not all(0 < value <= 9223372036854775807 for value in (collection_id, pin_id)):
+        return jsonify(error="Collection or pin not found"), 404
+
+    with Session.begin() as db:
+        collection = db.scalar(
+            select(Collection).where(
+                Collection.id == collection_id,
+                Collection.owner_id == user_id,
+            )
+        )
+
+        if collection is None:
+            return jsonify(error="Collection not found"), 404
+
+        pin = db.scalar(
+            select(Pin).where(
+                Pin.id == pin_id,
+                (
+                    (Pin.visibility == "public")
+                    | (Pin.creator_id == user_id)
+                ),
+            )
+        )
+
+        if pin is None:
+            return jsonify(error="Pin not found"), 404
+
+        db.execute(
+            insert(CollectionPin)
+            .values(collection_id=collection_id, pin_id=pin_id)
+            .on_conflict_do_nothing(
+                index_elements=["collection_id", "pin_id"]
+            )
+        )
+
+    return jsonify(saved=True)
+
+@app.get("/api/collections/<int:collection_id>/pins")
+def collection_pins(collection_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not 0 < collection_id <= 9223372036854775807:
+        return jsonify(error="Collection not found"), 404
+
+    before = request.args.get("before")
+
+    if before is not None:
+        try:
+            before = int(before)
+            if not 0 < before <= 9223372036854775807:
+                raise ValueError()
+        except ValueError:
+            return jsonify(error="Invalid pagination cursor"), 400
+
+    with Session() as db:
+        collection = db.scalar(
+            select(Collection).where(
+                Collection.id == collection_id,
+                Collection.owner_id == user_id,
+            )
+        )
+
+        if collection is None:
+            return jsonify(error="Collection not found"), 404
+
+        query = (
+            select(Pin, Media)
+            .join(Media, Pin.media_id == Media.id)
+            .join(CollectionPin, CollectionPin.pin_id == Pin.id)
+            .where (
+                CollectionPin.collection_id == collection_id,
+                (
+                    (Pin.visibility == "public")
+                    | (Pin.creator_id == user_id)
+                ),
+            )
+            .order_by(Pin.id.desc())
+            .limit(31)
+        )
+
+        if before is not None:
+            query = query.where(Pin.id < before)
+
+        rows = db.execute(query).all()
+        has_more = len(rows) > 30
+        pins = [
+            serialize_pin(pin, media)
+            for pin, media in rows[:30]
+        ]
+
+        result = {
+            "collection": {
+                "id": str(collection.id),
+                "name": collection.name,
+            },
+            "pins": pins,
+            "next_cursor": pins[-1]["id"] if has_more else None,
+        }
+
+    return jsonify(result)
+
+@app.get("/api/pins/<int:pin_id>/collections")
+def pin_collections(pin_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not 0 < pin_id <= 9223372036854775807:
+        return jsonify(error="Invalid pin ID"), 400
+
+    query = (
+        select(CollectionPin.collection_id)
+        .join(Collection, Collection.id == CollectionPin.collection_id)
+        .where(
+            CollectionPin.pin_id == pin_id,
+            Collection.owner_id == user_id,
+        )
+    )
+
+    with Session() as db:
+        collection_ids = [str(value) for value in db.scalars(query)]
+
+    return jsonify(collection_ids=collection_ids)

@@ -1,240 +1,243 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description"content="Lightweight Pinterest">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="PinLite">
-  <meta property="og:description" content="Lightweight Pinterest">
-  <meta property="og:url" content="https://pinlite.app/">
-  <meta property="og:image" content="https://pinlite.app/favicon.png">
-  <meta property="og:image:alt" content="PinLite">
-  <meta name="twitter:card" content="summary">
-  <title>PinLite</title>
-  <link rel="preconnect" href="https://i.pinimg.com">
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?">
-  <link rel="icon" type="image/x-icon" href="/favicon.ico?">
-  <script src="/static/masonry.js" defer></script>
-  <script src="/static/account.js" defer></script>
-  <script src="/static/collections.js" defer></script>
-  <script src="/static/app.js" defer></script>
-</head>
-<body>
-  <header>
-    <h1><a href="/">PinLite 2.0</a></h1>
-    <h3 id="subtitle"></h3>
-    <form id="search" role="search">
-      <label for="query">Search PinLite:</label>
-      <input id="query" name="q" type="text" required maxlength="200" autocomplete="off">
-      <button type="submit">Search</button>
-      <br><br>
-      <input type="checkbox" id="exclude-ai" value="AI">
-      <label for="exclude-ai">Exclude AI generated content</label><button class="info" title="AI filter is based on Pinterest's own labels and PinLite's user-reported AI database." disabled>ⓘ</button>
-      <br>
-      <br>
-      Show:
-      <input type="checkbox" id="show-images" checked>
-      <label for="show-images">Images</label>
-      <input type="checkbox" id="show-videos" checked>
-      <label for="show-videos">Videos</label>
-      <br><br>
-      <button id="saved-pins" type="button">Saved pins</button>
-      <button id="settings" type="button" aria-controls="settings-panel" aria-expanded="false">Settings</button>
-      <br><br>
-      <a href="https://github.com/namiisama/pinlite-feedback/issues" target="_blank"><button class="blue" type="button">Submit bug or request feature</button></a>
-    </form>
-    <div id="account">
-        <form id="account-form">
-            <label>
-                Email
-                <input id="account-email" type="email" autocomplete="username" maxlength="256" required>
-            </label>
-            <label>
-                Password
-                <input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="64" required>
-            </label>
-            <label id="account-name-field" hidden>
-                Display name
-                <input id="account-name" type="text" autocomplete="nickname" maxlength="100">
-            </label>
-
-            <button id="account-submit" type="submit">Sign in</button>
-            <button id="account-switch" type="button">Create account</button>
-        </form>
-
-        <div id="account-user" hidden>
-            Signed in as <span id="account-display-name"></span>
-            <button id="account-logout" type="button">Sign out</button>
-        </div>
-        <p id="account-status" role="status"></p>
-    </div>
-
-    <div id="settings-panel" hidden>
-      <button type="button" id="settings-panel-close">X</button>
-      <br>
-      <p class="caution"><b>Remember to back up your saved pins regularly!</b> One wrong cache clear and everything's gone!</p>
-      <div class="panel">
-        <b>AI filtering</b>
-        <hr>
-        <p>When "Exclude AI" is enabled, hide:</p>
-        <label>
-          <input id="ai-source-pinterest" type="checkbox" checked>
-          Pinterest-labeled AI
-        </label>
-        <br>
-        <label>
-          <input id="ai-source-community" type="checkbox" checked>
-          Community-flagged AI
-        </label>
-        <p><small>Community-flagged reports are not automatically verified.</small></p>
-      </div>
-      <br>
-      <div class="panel">
-        <span><b>Import/export</b></span>
-        <hr>   
-        <input value="test" id="import-favorites" type="file" accept=".json,application/json">
-        <button id="export-favorites" type="button">Export pins to file</button>
-        <br>
-      </div>
-      <br>
-      <div class="panel">
-        <span><b>Import boards from Pinterest</b></span>
-        <hr>
-        <form id="board-import">
-          <label for="board-url">Pinterest board URL (public):</label>
-          <br>
-          <input id="board-url" type="text" required placeholder="https://pinterest.com/username/board">
-          <br><br>
-          <label for="board-folder">Save to:</label>
-          <br>
-          <select id="board-folder">
-            <option value="__new">New folder</option>
-            <option value="">Unfilled</option>
-          </select>
-          <br><br>
-          <label for="board-folder-name">Folder name:</label>
-          <br>
-          <input id="board-folder-name" type="text" maxlength="80" placeholder="Use board name">
-          <br><br>
-          <button id="board-import-submit" type="submit">Import board</button>
-          <button id="board-import-cancel" type="button" hidden>Cancel</button>
-          <p id="board-import-status" role="status" aria-live="polite"></p>
-        </form>
-      </div>
-      <br>
-      <div class="panel">
-        <span><b>Hidden pins</b></span>
-        <hr>
-        <span id="hidden-pin-count">0 hidden pins</span>
-        <button id="restore-hidden-pins" type="button">Show all hidden pins</button>
-      </div>
-      <br>
-      <div class="panel">
-        <span><b>Quality</b></span>
-        <hr>
-        <label for="thumbnail-size">Image quality</label>
-        <select id="thumbnail-size">
-          <option value="small">Small</option>
-          <option value="normal" selected>Normal</option>
-          <option value="large">Large</option>
-        </select>
-      </div>
-      <br>
-      <div class="panel">
-        <span><b>Website theme</b></span>
-        <hr>
-        <label for="theme">Theme</label>
-        <select id="theme">
-          <option value="classic">Classic</option>
-          <option value="dark">Dark</option>
-          <option value="oldweb">Old Web</option>
-          <option value="terminal">Terminal</option>
-          <option value="parchment">Parchment</option>
-          <option value="ao3">AO3</option>
-          <option value="geocities">Geocities</option>
-        </select>
-        <br>
-        <a href="themes/mytheme.css" target="_blank">Make your own!</a>
-      </div>
-    </div>
-  </header>
-  <hr>
-  <main>
-    <p id="report-status" role="status" aria-live="polite"></p>
-    <section id="collections-panel" hidden>
-        <h2>Your collections</h2>
-        <a href="/">Home</a>
-
-        <form id="collection-form" hidden>
-            <label for="collection-name">New collection</label>
-            <input id="collection-name" type="text" maxlength="200" required>
-            <button type="submit">Create</button>
-        </form>
-        <p id="collections-status" role="status">Checking sign-in...</p>
-        <ul id="collections-list"></ul>
-    </section>
-    <section id="detail" hidden aria-label="Pin detail">
-      <button id="back">Back to results</button>
-      <div class="detail-card">
-        <div class="inner">
-          <h2 id="detail-title"></h2>
-          <p id="detail-description"></p>
-          <p id="detail-status" role="status"></p>
-          <hr>
-          <div class="favorites-panel">
-            <button id="save-pin" class="green" type="button" hidden>Save</button>
-            <span id="pin-folder-control" hidden>
-              <label for="pin-folder">to</label>
-              <select id="pin-folder"></select>
-            </span>
-          </div>
-          <div class="links-panel">
-            <div class="links">
-              <a id="download-pin" hidden><button class="blue" type="button">Download</button></a>
-              <a id="download-video" hidden><button type="button">Download video</button></a>
-              <a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Visit source</a>
-              <button id="hide-pin" type="button" hidden>Hide this pin</button>
-              <button id="report-pin" class="red" type="button" hidden>Report AI</button>
-              <button id="appeal-pin" type="button" hidden>Appeal community label</button>
-            </div>
-          </div>
-          <button id="detail-retry" hidden>Retry detail</button>
-        </div>
-        <hr>
-        <div class="image-wrapper">
-          <p id="ai-label" hidden>
-            <strong>Community-flagged as AI</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description"content="Lightweight Pinterest">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="PinLite">
+        <meta property="og:description" content="Lightweight Pinterest">
+        <meta property="og:url" content="https://pinlite.app/">
+        <meta property="og:image" content="https://pinlite.app/favicon.png">
+        <meta property="og:image:alt" content="PinLite">
+        <meta name="twitter:card" content="summary">
+        <title>PinLite</title>
+        <link rel="preconnect" href="https://i.pinimg.com">
+        <link rel="stylesheet" href="/static/style.css">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico?">
+        <script src="/static/masonry.js" defer></script>
+        <script src="/static/collections.js" defer></script>
+        <script src="/static/account.js" defer></script>
+        <script src="/static/app.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <h1><a href="/">PinLite 2.0</a></h1>
+            <h3 id="subtitle"></h3>
+            <form id="search" role="search">
+            <label for="query">Search PinLite:</label>
+            <input id="query" name="q" type="text" required maxlength="200" autocomplete="off">
+            <button type="submit">Search</button>
+            <br><br>
+            <input type="checkbox" id="exclude-ai" value="AI">
+            <label for="exclude-ai">Exclude AI generated content</label><button class="info" title="AI filter is based on Pinterest's own labels and PinLite's user-reported AI database." disabled>ⓘ</button>
             <br>
-            <small>Based on user reports. Not automatically verified</small>
-          </p>
-          <img id="detail-image" alt="">
-          <video id="detail-video" controls playsinline preload="none" hidden></video>
+            <br>
+            Show:
+            <input type="checkbox" id="show-images" checked>
+            <label for="show-images">Images</label>
+            <input type="checkbox" id="show-videos" checked>
+            <label for="show-videos">Videos</label>
+            <br><br>
+            <button id="saved-pins" type="button">Saved pins</button>
+            <button id="settings" type="button" aria-controls="settings-panel" aria-expanded="false">Settings</button>
+            <br><br>
+            <a href="https://github.com/namiisama/pinlite-feedback/issues" target="_blank"><button class="blue" type="button">Submit bug or request feature</button></a>
+            </form>
+            <div id="account">
+                <form id="account-form">
+                    <label>
+                        Email
+                        <input id="account-email" type="email" autocomplete="username" maxlength="256" required>
+                    </label>
+                    <label>
+                        Password
+                        <input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="64" required>
+                    </label>
+                    <label id="account-name-field" hidden>
+                        Display name
+                        <input id="account-name" type="text" autocomplete="nickname" maxlength="100">
+                    </label>
+
+                    <button id="account-submit" type="submit">Sign in</button>
+                    <button id="account-switch" type="button">Create account</button>
+                </form>
+
+                <div id="account-user" hidden>
+                    Signed in as <span id="account-display-name"></span>
+                    <button id="account-logout" type="button">Sign out</button>
+                </div>
+                <p id="account-status" role="status"></p>
+            </div>
+
+            <div id="settings-panel" hidden>
+            <button type="button" id="settings-panel-close">X</button>
+            <br>
+            <p class="caution"><b>Remember to back up your saved pins regularly!</b> One wrong cache clear and everything's gone!</p>
+            <div class="panel">
+                <b>AI filtering</b>
+                <hr>
+                <p>When "Exclude AI" is enabled, hide:</p>
+                <label>
+                <input id="ai-source-pinterest" type="checkbox" checked>
+                Pinterest-labeled AI
+                </label>
+                <br>
+                <label>
+                <input id="ai-source-community" type="checkbox" checked>
+                Community-flagged AI
+                </label>
+                <p><small>Community-flagged reports are not automatically verified.</small></p>
+            </div>
+            <br>
+            <div class="panel">
+                <span><b>Import/export</b></span>
+                <hr>   
+                <input value="test" id="import-favorites" type="file" accept=".json,application/json">
+                <button id="export-favorites" type="button">Export pins to file</button>
+                <br>
+            </div>
+            <br>
+            <div class="panel">
+                <span><b>Import boards from Pinterest</b></span>
+                <hr>
+                <form id="board-import">
+                <label for="board-url">Pinterest board URL (public):</label>
+                <br>
+                <input id="board-url" type="text" required placeholder="https://pinterest.com/username/board">
+                <br><br>
+                <label for="board-folder">Save to:</label>
+                <br>
+                <select id="board-folder">
+                    <option value="__new">New folder</option>
+                    <option value="">Unfilled</option>
+                </select>
+                <br><br>
+                <label for="board-folder-name">Folder name:</label>
+                <br>
+                <input id="board-folder-name" type="text" maxlength="80" placeholder="Use board name">
+                <br><br>
+                <button id="board-import-submit" type="submit">Import board</button>
+                <button id="board-import-cancel" type="button" hidden>Cancel</button>
+                <p id="board-import-status" role="status" aria-live="polite"></p>
+                </form>
+            </div>
+            <br>
+            <div class="panel">
+                <span><b>Hidden pins</b></span>
+                <hr>
+                <span id="hidden-pin-count">0 hidden pins</span>
+                <button id="restore-hidden-pins" type="button">Show all hidden pins</button>
+            </div>
+            <br>
+            <div class="panel">
+                <span><b>Quality</b></span>
+                <hr>
+                <label for="thumbnail-size">Image quality</label>
+                <select id="thumbnail-size">
+                <option value="small">Small</option>
+                <option value="normal" selected>Normal</option>
+                <option value="large">Large</option>
+                </select>
+            </div>
+            <br>
+            <div class="panel">
+                <span><b>Website theme</b></span>
+                <hr>
+                <label for="theme">Theme</label>
+                <select id="theme">
+                <option value="classic">Classic</option>
+                <option value="dark">Dark</option>
+                <option value="oldweb">Old Web</option>
+                <option value="terminal">Terminal</option>
+                <option value="parchment">Parchment</option>
+                <option value="ao3">AO3</option>
+                <option value="geocities">Geocities</option>
+                </select>
+                <br>
+                <a href="themes/mytheme.css" target="_blank">Make your own!</a>
+            </div>
+            </div>
+        </header>
+    <hr>
+    <main>
+        <p id="report-status" role="status" aria-live="polite"></p>
+        <section id="collections-panel" hidden>
+            <h2>Your collections</h2>
+            <a href="/">Home</a>
+
+            <form id="collection-form" hidden>
+                <label for="collection-name">New collection</label>
+                <input id="collection-name" type="text" maxlength="200" required>
+                <button type="submit">Create</button>
+            </form>
+            <p id="collections-status" role="status">Checking sign-in...</p>
+            <ul id="collections-list"></ul>
+        </section>
+        <section id="detail" hidden aria-label="Pin detail">
+        <button id="back">Back to results</button>
+        <div class="detail-card">
+            <div class="inner">
+            <h2 id="detail-title"></h2>
+            <p id="detail-description"></p>
+            <p id="detail-status" role="status"></p>
+            <hr>
+            
+            <div class="favorites-panel">
+                <button id="save-pin" class="green" type="button" hidden>Save</button>
+                <span id="pin-folder-control" hidden>
+                <label for="pin-folder">to</label>
+                <select id="pin-folder"></select>
+                </span>
+            </div>
+            <p id="pin-save-status" role="status"></p>
+
+            <div class="links-panel">
+                <div class="links">
+                <a id="download-pin" hidden><button class="blue" type="button">Download</button></a>
+                <a id="download-video" hidden><button type="button">Download video</button></a>
+                <a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Visit source</a>
+                <button id="hide-pin" type="button" hidden>Hide this pin</button>
+                <button id="report-pin" class="red" type="button" hidden>Report AI</button>
+                <button id="appeal-pin" type="button" hidden>Appeal community label</button>
+                </div>
+            </div>
+            <button id="detail-retry" hidden>Retry detail</button>
+            </div>
+            <hr>
+            <div class="image-wrapper">
+            <p id="ai-label" hidden>
+                <strong>Community-flagged as AI</strong>
+                <br>
+                <small>Based on user reports. Not automatically verified</small>
+            </p>
+            <img id="detail-image" alt="">
+            <video id="detail-video" controls playsinline preload="none" hidden></video>
+            </div>
         </div>
-      </div>
-    </section>
-    <div id="feed-heading" hidden>
-      <h2 id="heading"></h2>
-      <p id="feed-count"></p>
+        </section>
+        <div id="feed-heading" hidden>
+        <h2 id="heading"></h2>
+        <p id="feed-count"></p>
+        </div>
+        <div id="loading-indicator" hidden aria-hidden="true">
+        <img src="/loading.gif" />
     </div>
-      <div id="loading-indicator" hidden aria-hidden="true">
-    <img src="/loading.gif" />
-  </div>
 
-    <div id="grid" class="grid" aria-label="Pins"></div>
-    <div id="sentinel"><p id="status" role="status"></p><button id="load-more" hidden>Load more</button></div>
-    <noscript>This website needs JavaScript to search and show pins.</noscript>
-  </main>
+        <div id="grid" class="grid" aria-label="Pins"></div>
+        <div id="sentinel"><p id="status" role="status"></p><button id="load-more" hidden>Load more</button></div>
+        <noscript>This website needs JavaScript to search and show pins.</noscript>
+    </main>
 
-  <hr>
-    
-  <footer>
-    <small>PinLite is not affiliated with Pinterest. Content comes directly from Pinterest.</small>
-    <br>
-    <small>Made with spite and hatred by <a href="https://x.com/tsuicaa" target="_blank">tsu ツ</a>.</small>
-    <br>
-    <small><a href="https://ko-fi.com/tsuica" target="_blank">Support this project</a></small>
-  </footer>
-</body>
+    <hr>
+        
+    <footer>
+        <small>PinLite is not affiliated with Pinterest. Content comes directly from Pinterest.</small>
+        <br>
+        <small>Made with spite and hatred by <a href="https://x.com/tsuicaa" target="_blank">tsu ツ</a>.</small>
+        <br>
+        <small><a href="https://ko-fi.com/tsuica" target="_blank">Support this project</a></small>
+    </footer>
+    </body>
 </html>

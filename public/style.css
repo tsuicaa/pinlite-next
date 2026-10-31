@@ -61,6 +61,10 @@ button.green {
   background-color: #5bff6f;
 }
 
+button:disabled {
+  background-color: inherit;
+}
+
 .caution {
   background: #ff5b5b;
   padding: 5px;
