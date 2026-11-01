@@ -203,6 +203,11 @@ async function showRoute() {
             detail: pin.id,
         }));
 
+        document.dispatchEvent(new CustomEvent("pin-detail", {
+            detail: pin,
+        }));
+
+
         $("detail-title").textContent = pin.title;
         $("detail-description").textContent = pin.description;
         $("detail-image").src = pin.image;
@@ -266,6 +271,8 @@ document.addEventListener("collection-updated", event => {
         }
     }
 });
+
+document.addEventListener("pin-updated", resetFeed);
 
 window.addEventListener("popstate", showRoute);
 

@@ -362,6 +362,28 @@ button:disabled {
   touch-action: pan-y pinch-zoom;
 }
 
+#pin-edit-form {
+  margin: 0;
+  text-align: left;
+}
+
+#pin-edit-title,
+#pin-edit-description {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  font: inherit;
+  margin: 1em 0;
+}
+
+#pin-edit-title {
+  font-size: 1.5em;
+}
+
+#pin-edit-description {
+  resize: vertical;
+}a
+
 #feed-heading {
   padding: 8px;
   border: 1px solid #000;
@@ -435,6 +457,32 @@ button:disabled {
 
 .collection-controls {
   padding: 6px;
+}
+
+#status-bar {
+  z-index: 1;
+  position: fixed;
+  top: -100px;
+  width: min(440px, calc(100% - 72px));
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  animation: slideInTop 0.2s linear forwards;
+  background-color: #71aaff;
+}
+
+#status-bar p {
+  margin: 0;
+}
+
+@keyframes slideInTop {
+  from {
+    top: -100px;
+  }
+
+  to {
+    top: 0;
+  }
 }
 
 footer {

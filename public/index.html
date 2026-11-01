@@ -20,6 +20,7 @@
         <script src="/static/collections.js" defer></script>
         <script src="/static/create-pin.js" defer></script>
         <script src="/static/account.js" defer></script>
+        <script src="/static/pin-actions.js" defer></script>
         <script src="/static/app.js" defer></script>
     </head>
     <body>
@@ -65,8 +66,6 @@
             <br><br>
             <input type="checkbox" id="exclude-ai" value="AI">
             <label for="exclude-ai">Exclude AI content</label>
-            
-            Show:
             <input type="checkbox" id="show-images" checked>
             <label for="show-images">Images</label>
             <input type="checkbox" id="show-videos" checked>
@@ -183,7 +182,31 @@
         <div class="detail-card">
             <div class="inner">
             <h2 id="detail-title"></h2>
+            <input id="pin-edit-title" form="pin-edit-form" type="text"
+                maxlength="300" aria-label="Title" required hidden>
+
             <p id="detail-description"></p>
+            <textarea id="pin-edit-description" form="pin-edit-form"
+                    maxlength="10000" rows="5" aria-label="Description" hidden></textarea>
+
+            <p id="pin-visibility-row" hidden>
+            
+            <span id="pin-visibility"></span>
+            <select id="pin-edit-visibility" form="pin-edit-form"
+                    aria-label="Visibility" hidden>
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+            </select>
+            </p>
+            <div id="pin-actions" hidden>
+                <form id="pin-edit-form">
+                    <button id="pin-edit" type="button">Edit</button>
+                    <button id="pin-edit-save" type="submit" hidden>Save changes</button>
+                    <button id="pin-edit-cancel" type="button" hidden>Cancel</button>
+                    <button id="pin-delete" type="button">Delete</button>
+                </form>
+                <p id="pin-actions-status" role="status"></p>
+            </div>
             <p id="detail-status" role="status"></p>
             <hr>
 
@@ -194,6 +217,7 @@
                 <select id="pin-folder"></select>
                 </span>
             </div>
+            
             <p id="pin-save-status" role="status"></p>
 
             <div class="links-panel">
@@ -221,7 +245,6 @@
         </div>
         </section>
         <dialog id="create-pin-dialog" class="panel">
-            
             <button id="create-pin-close" type="button" aria-label="Close">X</button>
             <h2>Create a pin</h2>
             <form id="create-pin-form" hidden>
@@ -247,7 +270,7 @@
                 <button type="submit">Create pin</button>
             </form>
 
-            <p id="create-pin-status" role="status">Checking sign-in…</p>
+            <p id="create-pin-status" role="status">Checking sign-in...</p>
         </dialog>
         <div id="feed-heading" hidden>
         <h2 id="heading"></h2>
@@ -261,13 +284,10 @@
         <div id="sentinel"><p id="status" role="status"></p><button id="load-more" hidden>Load more</button></div>
         <noscript>This website needs JavaScript to search and show pins.</noscript>
     </main>
-
     <hr>
         
     <button id="create-pin-open" class="red" type="button" hidden>Create pin</button>
     <footer>
-        <small>PinLite is not affiliated with Pinterest. Content comes directly from Pinterest.</small>
-        <br>
         <small>Made with spite and hatred by <a href="https://x.com/tsuicaa" target="_blank">tsu ツ</a>.</small>
         <br>
         <small><a href="https://ko-fi.com/tsuica" target="_blank">Support this project</a></small>

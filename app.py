@@ -43,6 +43,8 @@ def serialize_pin(pin, media):
         "mime_type": media.mime_type,
         "width": media.width,
         "height": media.height,
+        "visibility": pin.visibility,
+        "can_edit": pin.creator_id == login_session.get("user_id"),
     }
 
 
@@ -662,3 +664,80 @@ def my_pins():
         pins=pins,
         next_cursor=pins[-1]["id"] if has_more else None,
     )
+
+@app.patch("/api/pins/<int:pin_id>")
+def edit_pin(pin_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not 0 < pin_id <= 9223372036854775807:
+        return jsonify(error="Pin not found"), 404
+
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    title = data.get("title")
+    visibility = data.get("visibility")
+    description = data.get("description", "")
+
+    if not isinstance(title, str) or not 1 <= len(title.strip()) <= 300:
+        return jsonify(error="Title must be 1-300 characters"), 400
+
+    if visibility not in ("public", "private"):
+        return jsonify(error="Invalid visibility"), 400
+
+    if not isinstance(description, str) or len(description) > 10000:
+        return jsonify(error="Description must be max 10000 characters"), 400
+
+    with Session.begin() as db:
+        pin = db.scalar(
+            select(Pin).where(
+                Pin.id == pin_id,
+                Pin.creator_id == user_id,
+            )
+        )
+
+        if pin is None:
+            return jsonify(error="Pin not found"), 404
+
+        pin.title = title.strip()
+        pin.visibility = visibility
+        pin.description = description.strip()
+
+        result = {
+            "id": str(pin.id),
+            "title": pin.title,
+            "description": pin.description,
+            "visiblity": pin.visibility,
+        }
+
+    return jsonify(pin=result)
+
+@app.delete("/api/pins/<int:pin_id>")
+def delete_pin(pin_id):
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    if not 0 < pin_id <= 9223372036854775807:
+        return jsonify(error="Pin not found"), 404
+
+    with Session.begin() as db:
+        pin = db.scalar(
+            select(Pin).where(
+                Pin.id == pin_id,
+                Pin.creator_id == user_id,
+            )
+        )
+
+        if pin is None:
+            return jsonify(error="Pin not found"), 404
+
+        db.delete(pin)
+
+    return jsonify(deleted=True)
