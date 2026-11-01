@@ -1,5 +1,5 @@
 import os
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from datetime import timedelta
 
 from flask import Flask, jsonify, request, session as login_session
@@ -103,7 +103,13 @@ def pin_detail(pin_id):
     query = (
         select(Pin, Media)
         .join(Media, Pin.media_id == Media.id)
-        .where(Pin.id == pin_id, Pin.visibility == "public")
+        .where(
+            Pin.id == pin_id,
+            (
+                (Pin.visibility == "public")
+                | (Pin.creator_id == login_session.get("user_id"))
+            ),
+        )
     )
 
     with Session() as session:
@@ -552,3 +558,107 @@ def delete_collection(collection_id):
         db.delete(collection)
 
     return jsonify(deleted=True)
+
+@app.post("/api/pins")
+def create_pin():
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    title = data.get("title")
+    image_url = data.get("image_url")
+    visibility = data.get("visibility", "private")
+
+    if not isinstance(title, str) or not 1 <= len(title.strip()) <= 300:
+        return jsonify(error="Title must be 1-300 characters"), 400
+
+    if not isinstance(image_url, str) or not 1 <= len(image_url) <= 4096:
+        return jsonify(error="Enter image URL"), 400
+
+    image_url = image_url.strip()
+
+    try:
+        parsed = urlsplit(image_url)
+        valid_url = (
+            parsed.scheme in {"http", "https"}
+            and bool(parsed.hostname)
+            and parsed.username is None
+            and parsed.password is None
+            and not any(char.isspace() for char in image_url)
+        )
+    except ValueError:
+        valid_url = False
+
+    if not valid_url:
+        return jsonify(error="Enter a valid image URL"), 400
+
+    if visibility not in ("public", "private"):
+        return jsonify(error="Invalid visibility"), 400
+
+    with Session.begin() as db:
+        media = Media(
+            storage_kind="external",
+            external_url=image_url,
+        )
+        db.add(media)
+        db.flush()
+
+        pin = Pin(
+            creator_id=user_id,
+            media_id=media.id,
+            title=title.strip(),
+            visibility=visibility
+        )
+        db.add(pin)
+        db.flush()
+
+        result = serialize_pin(pin, media)
+
+    return jsonify(pin=result), 201
+
+@app.get("/api/me/pins")
+def my_pins():
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    before = request.args.get("before")
+
+    if before is not None:
+        try:
+            before = int(before)
+            if not 0 < before <= 9223372036854775807:
+                raise ValueError()
+        except ValueError:
+            return jsonify(error="Invalid pagination cursor"), 400
+
+    query = (
+        select(Pin, Media)
+        .join(Media, Pin.media_id == Media.id)
+        .where(Pin.creator_id == user_id)
+        .order_by(Pin.id.desc())
+        .limit(31)
+    )
+
+    if before is not None:
+        query = query.where(Pin.id < before)
+
+    with Session() as db:
+        rows = db.execute(query).all()
+        has_more = len(rows) > 30
+        pins = [
+            serialize_pin(pin, media)
+            for pin, media in rows[:30]
+        ]
+
+    return jsonify(
+        pins=pins,
+        next_cursor=pins[-1]["id"] if has_more else None,
+    )

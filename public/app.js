@@ -34,6 +34,8 @@ function renderPin(pin) {
   const collectionId = new URLSearchParams(location.search).get("collection");
   if (collectionId) {
     pinUrl.searchParams.set("collection", collectionId);
+  } else if (new URLSearchParams(location.search).get("view") === "my-pins") {
+    pinUrl.searchParams.set("view", "my-pins");
   }
 
   button.href = pinUrl.pathname + pinUrl.search;
@@ -128,6 +130,8 @@ async function showRoute() {
     const params = new URLSearchParams(location.search);
     const pinId = params.get("pin");
     const collectionId = params.get("collection");
+    const myPins = collectionId === null
+        && params.get("view") === "my-pins"
 
     const showingDetail = pinId !== null;
     const showingCollections = !showingDetail
@@ -140,18 +144,23 @@ async function showRoute() {
 
     $("detail").hidden = !showingDetail;
     $("collections-panel").hidden = !showingCollections;
-    $("feed-heading").hidden = !showingFeed || collectionId === null;
+    $("feed-heading").hidden = !showingFeed || (collectionId === null && !myPins);
     grid.hidden = !showingFeed;
     $("sentinel").hidden = !showingFeed;
 
     if (showingFeed) {
         const path = collectionId !== null
             ? `/api/collections/${encodeURIComponent(collectionId)}/pins`
-            : "/api/pins"
+            : myPins
+                ? "/api/me/pins"
+                : "/api/pins";
 
         if (feedPath !== path) {
             resetFeed();
             feedPath = path;
+            if (myPins) {
+                $("heading").textContent = "My pins";
+            }
             feedScroll = 0;
             loadPins();
         }
@@ -219,12 +228,14 @@ async function showRoute() {
 loadMore.addEventListener("click", loadPins);
 
 $("back").addEventListener("click", () => {
-    const collectionId = new URLSearchParams(location.search)
-    .get("collection");
+    const params = new URLSearchParams(location.search);
+    const collectionId = params.get("collection");
 
     const destination = collectionId !== null
         ? `/?collection=${encodeURIComponent(collectionId)}`
-        : "/";
+        : params.get("view") === "my-pins"
+            ? "/?view=my-pins"
+            : "/";
 
     history.pushState(null, "", destination);
     showRoute();
@@ -236,7 +247,9 @@ $("saved-pins").addEventListener("click", () => {
 })
 
 document.addEventListener("account-change", () => {
-    if (new URLSearchParams(location.search).has("collection")) {
+    const params = new URLSearchParams(location.search);
+
+    if (params.has("collection") || params.has("pin") || params.get("view") === "my-pins") {
         resetFeed();
         showRoute();
     }

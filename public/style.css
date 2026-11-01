@@ -459,6 +459,39 @@ footer {
   font-weight: bold;
 }
 
+#create-pin-open {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 10;
+  padding: 12px 18px;
+}
+
+#create-pin-dialog {
+  width: min(440px, calc(100% - 32px));
+  max-height: 90vh;
+  overflow: auto;
+  padding: 16px;
+}
+
+#create-pin-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+#create-pin-close {
+  float: right;
+}
+
+#create-pin-form {
+  margin: 0;
+  text-align: left;
+}
+
+#create-pin-form input {
+  width: 100%;
+  max-width: 100%;
+}
+
 
 @media (max-width: 500px) { 
   #detail-image {

@@ -18,6 +18,7 @@
         <link rel="icon" type="image/x-icon" href="/favicon.ico?">
         <script src="/static/masonry.js" defer></script>
         <script src="/static/collections.js" defer></script>
+        <script src="/static/create-pin.js" defer></script>
         <script src="/static/account.js" defer></script>
         <script src="/static/app.js" defer></script>
     </head>
@@ -34,6 +35,7 @@
         <div id="account" class="panel" hidden>
             <form id="account-actions" hidden>
                 <h2 id="account-display-name"></h2>
+                <a href="/?view=my-pins"><button id="account-pins" type="button">My pins</button></a>
                 <button id="account-logout" type="button">Sign out</button>
             </form>
             <form id="account-form" hidden>
@@ -218,6 +220,35 @@
             </div>
         </div>
         </section>
+        <dialog id="create-pin-dialog" class="panel">
+            
+            <button id="create-pin-close" type="button" aria-label="Close">X</button>
+            <h2>Create a pin</h2>
+            <form id="create-pin-form" hidden>
+                <p>
+                <label for="new-pin-title">Title</label><br>
+                <input id="new-pin-title" type="text" maxlength="300" required>
+                </p>
+
+                <p>
+                <label for="new-pin-image">Direct image URL</label><br>
+                <input id="new-pin-image" type="url" maxlength="4096"
+                        placeholder="https://example.com/image.jpg" required>
+                </p>
+
+                <p>
+                <label for="new-pin-visibility">Visibility</label>
+                <select id="new-pin-visibility">
+                    <option value="private">Private</option>
+                    <option value="public">Public</option>
+                </select>
+                </p>
+
+                <button type="submit">Create pin</button>
+            </form>
+
+            <p id="create-pin-status" role="status">Checking sign-in…</p>
+        </dialog>
         <div id="feed-heading" hidden>
         <h2 id="heading"></h2>
         <p id="feed-count"></p>
@@ -233,6 +264,7 @@
 
     <hr>
         
+    <button id="create-pin-open" class="red" type="button" hidden>Create pin</button>
     <footer>
         <small>PinLite is not affiliated with Pinterest. Content comes directly from Pinterest.</small>
         <br>
