@@ -254,24 +254,9 @@
                 </p>
 
                 <p>
-                <label for="new-pin-mode">Image source</label>
-                <select id="new-pin-mode">
-                    <option value="upload">Upload image</option>
-                    <option value="url">Image URL</option>
-                </select>
-                </p>
-
-                <p id="new-pin-upload-field">
-                <label for="new-pin-file">Image file</label><br>
-                <input id="new-pin-file" type="file"
-                        accept="image/jpeg,image/png,image/webp" required>
-                <br><small>JPEG, PNG or static WebP. Maximum 10 MB.</small>
-                </p>
-
-                <p id="new-pin-url-field" hidden>
                 <label for="new-pin-image">Direct image URL</label><br>
                 <input id="new-pin-image" type="url" maxlength="4096"
-                        placeholder="https://example.com/image.jpg" disabled>
+                        placeholder="https://example.com/image.jpg" required>
                 </p>
 
                 <p>

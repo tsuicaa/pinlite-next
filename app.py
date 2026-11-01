@@ -11,10 +11,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from db import Session
 from models import Collection, CollectionPin, Media, Pin, User
 
-from uuid import uuid4
-from images import prepare_image
-from storage import image_url, put_image, delete_images
-
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
 app = Flask(__name__, static_folder="public", static_url_path="/static")
@@ -27,7 +23,10 @@ app.config.update(
 )
 
 def media_url(key):
-    return image_url(key)
+    base = os.environ.get("MEDIA_BASE_URL", "").rstrip("/")
+    if not key or not base:
+        return None
+    return f"{base}/{quote(key, safe='/')}"
 
 def serialize_pin(pin, media):
     return {
@@ -51,27 +50,13 @@ def serialize_pin(pin, media):
 
 @app.before_request
 def require_api_json():
-    if not request.path.startswith("/api/"):
-        return
-
-    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
-        return
-
-    if request.endpoint == "create_uploaded_pin":
-        request.max_content_length = 11 * 1024 * 1024
-
-        if request.headers.get("Origin") != request.host_url.rstrip("/"):
-            return jsonify(error="Invalid request origin"), 403
-
-        if request.mimetype != "multipart/form-data":
-            return jsonify(error="Send a file upload"), 415
-
-        return
-
-    if not request.is_json:
+    if (
+        request.path.startswith("/api/")
+        and request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        and not request.is_json
+    ):
         return jsonify(error="Send application/json"), 415
 
-    
 @app.get("/")
 def index():
     return app.send_static_file("index.html")
@@ -756,70 +741,3 @@ def delete_pin(pin_id):
         db.delete(pin)
 
     return jsonify(deleted=True)
-
-@app.post("/api/uploads")
-def create_uploaded_pin():
-    user_id = login_session.get("user_id")
-
-    if user_id is None:
-        return jsonify(error="Sign in first"), 401
-
-    title = request.form.get("title", "").strip()
-    visibility = request.form.get("visibility", "private")
-    file = request.files.get("image")
-
-    if not 1 <= len(title) <= 300:
-        return jsonify(error="Title must be 1–300 characters"), 400
-
-    if visibility not in ("public", "private"):
-        return jsonify(error="Invalid visibility"), 400
-
-    if file is None:
-        return jsonify(error="Choose an image"), 400
-
-    try:
-        prepared = prepare_image(file)
-    except ValueError as error:
-        return jsonify(error=str(error)), 400
-
-    identifier = uuid4().hex
-    image_key = f"images/{identifier}.webp"
-    thumbnail_key = f"thumbnails/{identifier}.webp"
-    keys = [image_key, thumbnail_key]
-
-    try:
-        put_image(image_key, prepared["image"])
-        put_image(thumbnail_key, prepared["thumbnail"])
-
-        with Session.begin() as db:
-            media = Media(
-                storage_kind="hosted",
-                object_key=image_key,
-                thumbnail_key=thumbnail_key,
-                mime_type=prepared["mime_type"],
-                width=prepared["width"],
-                height=prepared["height"],
-                byte_size=len(prepared["image"]),
-            )
-            db.add(media)
-            db.flush()
-
-            pin = Pin(
-                creator_id=user_id,
-                media_id=media.id,
-                title=title,
-                visibility=visibility,
-            )
-            db.add(pin)
-            db.flush()
-
-            result = serialize_pin(pin, media)
-
-    except Exception:
-        try:
-            delete_images(keys)
-        except Exception:
-            app.logger.exception("Can't clean up failed upload")
-        raise
-
-    return jsonify(pin=result), 201
