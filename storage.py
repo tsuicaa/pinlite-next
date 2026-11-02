@@ -33,8 +33,14 @@ def put_image(key, body):
     )
 
 def delete_images(keys):
-    client.delete_objects(
+    if not keys:
+        return
+
+    result = client.delete_objects(
         Bucket=bucket,
-        Delete={"Objects": [{"Key": key} for key in keys]}
+        Delete={"Objects": [{"Key": key} for key in keys]},
     )
+
+    if result.get("Errors"):
+        raise RuntimeError("R2 could not delete all requested images")
 

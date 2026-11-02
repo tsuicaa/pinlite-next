@@ -1,6 +1,6 @@
 import os
 from urllib.parse import quote, urlsplit
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 
 from flask import Flask, jsonify, request, session as login_session
 from sqlalchemy import delete, select, func
@@ -14,6 +14,8 @@ from models import Collection, CollectionPin, Media, Pin, User
 from uuid import uuid4
 from images import prepare_image
 from storage import image_url, put_image, delete_images
+
+import click
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -873,3 +875,48 @@ def create_uploaded_pin():
         raise
 
     return jsonify(pin=result), 201
+
+@app.cli.command("cleanup-media")
+@click.option("--apply", is_flag=True, help="Nuke unused media")
+def cleanup_media(apply):
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    unused = ~select(Pin.id).where(Pin.media_id == Media.id).exists()
+
+    with Session() as db:
+        candidates = list(db.scalars(
+            select(Media.id)
+            .where(Media.created_at < cutoff, unused)
+            .order_by(Media.id)
+            .limit(100)
+        ))
+
+    if not apply:
+        click.echo(f"Found {len(candidates)} unused media records. Nothing deleted")
+        return
+
+    removed = 0
+
+    for media_id in candidates:
+        with Session.begin() as db:
+            media = db.scalar(
+                select(Media)
+                .where(Media.id == media_id)
+                .with_for_update(skip_locked=True)
+            )
+
+            if media is None:
+                continue
+
+            if media.storage_kind == "hosted":
+                delete_images([
+                    key
+                    for key in (media.object_key, media.thumbnail_key)
+                    if key
+                ])
+
+            db.delete(media)
+
+        removed += 1
+
+    click.echo(f"Removed {removed} unused media records")
