@@ -48,6 +48,30 @@ def serialize_pin(pin, media):
         "can_edit": pin.creator_id == login_session.get("user_id"),
     }
 
+def selected_collection(db, value, user_id):
+    if value is None or value == "":
+        return None
+
+    if type(value) not in (str, int):
+        raise ValueError("Invalid collection")
+
+    try:
+        collection_id = int(value)
+    except ValueError:
+        raise ValueError("Invalid collection")
+
+
+    collection = db.scalar(
+        select(Collection).where(
+            Collection.id == collection_id,
+            Collection.owner_id == user_id,
+        )
+    )
+
+    if collection is None:
+        raise ValueError("Collection not found")
+
+    return collection.id
 
 @app.before_request
 def require_api_json():
@@ -619,6 +643,13 @@ def create_pin():
         return jsonify(error="Invalid visibility"), 400
 
     with Session.begin() as db:
+        try:
+            collection_id = selected_collection(
+                db, data.get("collectionn_id"), user_id
+            )
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+        
         media = Media(
             storage_kind="external",
             external_url=image_url,
@@ -634,6 +665,12 @@ def create_pin():
         )
         db.add(pin)
         db.flush()
+
+        if collection_id is not None:
+            db.add(CollectionPin(
+                collection_id=collection_id,
+                pin_id=pin.id,
+            ))
 
         result = serialize_pin(pin, media)
 
@@ -788,10 +825,17 @@ def create_uploaded_pin():
     keys = [image_key, thumbnail_key]
 
     try:
-        put_image(image_key, prepared["image"])
-        put_image(thumbnail_key, prepared["thumbnail"])
-
         with Session.begin() as db:
+            try:
+                collection_id = selected_collection(
+                    db, request.form.get("collection_id"), user_id
+                )
+            except ValueError as error:
+                return jsonify(error=str(error)), 400
+
+            put_image(image_key, prepared["image"])
+            put_image(thumbnail_key, prepared["thumbnail"])
+
             media = Media(
                 storage_kind="hosted",
                 object_key=image_key,
@@ -812,6 +856,12 @@ def create_uploaded_pin():
             )
             db.add(pin)
             db.flush()
+
+            if collection_id is not None:
+                db.add(CollectionPin(
+                    collection_id=collection_id,
+                    pin_id=pin.id,
+                ))
 
             result = serialize_pin(pin, media)
 

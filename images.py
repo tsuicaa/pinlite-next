@@ -23,13 +23,27 @@ def prepare_image(file):
             if getattr(original, "is_animated", False):
                 raise ValueError("Animated images aren't supported yet")
 
+            original.load()
+
+            keep_original = (
+                original.format == "WEBP"
+                and not any(
+                    original.info.get(key)
+                    for key in ("exif", "icc_profile", "xmp")
+                )
+            )
+
             image = ImageOps.exif_transpose(original).convert("RGBA")
 
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ValueError("Cannot read image") from None
 
-    full = BytesIO()
-    image.save(full, format="WEBP", quality=85)
+    if keep_original:
+        full_image = data
+    else:
+        full = BytesIO()
+        image.save(full, format="WEBP", quality=85)
+        full_image = full.getvalue()
 
     thumbnail = image.copy()
     thumbnail.thumbnail((480, 480))
@@ -38,7 +52,7 @@ def prepare_image(file):
     thumbnail.save(small, format="WEBP", quality=75)
 
     return {
-        "image": full.getvalue(),
+        "image": full_image,
         "thumbnail": small.getvalue(),
         "width": image.width,
         "height": image.height,

@@ -540,6 +540,106 @@ footer {
   max-width: 100%;
 }
 
+#create-pin-form input[type="text"] {
+  font-size: 1.2em;
+  font-family: serif;
+  padding: 6px;
+}
+
+#create-pin-form #drop-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 500px;
+  max-width: 100%;
+  height: 200px;
+  padding: 1em;
+  border: 1px solid #000;
+  border-top-color: #9A9A9A;
+  border-left-color: #9A9A9A;
+  border-right-color: #eee;
+  border-bottom-color: #eee;
+  cursor: pointer;
+}
+
+#create-pin-form #new-pin-file {
+  display: none;
+}
+
+#create-pin-form #preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#create-pin-form #preview li {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0;
+  width: 100%;
+  height: 100px;
+}
+
+#create-pin-form #preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#create-pin-form #preview span {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 5px;
+  background: #C0C0C0;
+  border: 1px solid #000;
+  border-top-color: #9A9A9A;
+  border-left-color: #9A9A9A;
+  border-right-color: #eee;
+  border-bottom-color: #eee;
+}
+
+#create-pin-progress {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  height: 20px;
+  border-radius: 0;
+  padding: 1px;  
+  border: 1px solid #000;
+  border-top-color: #9A9A9A;
+  border-left-color: #9A9A9A;
+  border-right-color: #eee;
+  border-bottom-color: #eee;
+}
+
+#create-pin-progress::-webkit-progress-bar {
+  background: #C0C0C0;
+}
+
+#create-pin-progress::-webkit-progress-value {
+  background: #00007B;
+}
+
+#create-pin-progress::-moz-progress-bar {
+  background: #00007B;
+}
+
+#create-pin-form button[type="submit"] {
+  float: right;
+  height: 43px;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: center;
+  align-items: center;
+  column-gap: 5px;
+  font-weight: bold;
+}
+
 
 @media (max-width: 500px) { 
   #detail-image {
