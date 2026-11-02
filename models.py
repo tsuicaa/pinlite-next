@@ -145,3 +145,10 @@ class CollectionPin(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+class RequestLimit(Base):
+    __tablename__ = "request_limits"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window: Mapped[int] = mapped_column(BigInteger)
+    count: Mapped[int]

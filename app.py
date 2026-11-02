@@ -9,13 +9,17 @@ from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import Session
-from models import Collection, CollectionPin, Media, Pin, User
+from models import Collection, CollectionPin, Media, Pin, User, RequestLimit
 
 from uuid import uuid4
 from images import prepare_image
 from storage import image_url, put_image, delete_images
 
 import click
+
+from quotas import check_quota, QuotaExceeded
+from limits import check_limit
+
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -646,8 +650,13 @@ def create_pin():
 
     with Session.begin() as db:
         try:
+            check_quota(db, user_id)
+        except QuotaExceeded as error:
+            return jsonify(error=str(error)), 403
+        
+        try:
             collection_id = selected_collection(
-                db, data.get("collectionn_id"), user_id
+                db, data.get("collection_id"), user_id
             )
         except ValueError as error:
             return jsonify(error=str(error)), 400
@@ -829,6 +838,11 @@ def create_uploaded_pin():
     try:
         with Session.begin() as db:
             try:
+                check_quota(db, user_id, len(prepared["image"]))
+            except QuotaExceeded as error:
+                return jsonify(error=str(error)), 403
+            
+            try:
                 collection_id = selected_collection(
                     db, request.form.get("collection_id"), user_id
                 )
@@ -920,3 +934,55 @@ def cleanup_media(apply):
         removed += 1
 
     click.echo(f"Removed {removed} unused media records")
+
+@app.before_request
+def limit_requests():
+    rules = {
+        "login": ("ip", 10, 60),
+        "register": ("ip", 3, 3600),
+        "create_uploaded_pin": ("account", 6, 60),
+        "create_pin": ("account", 20, 60),
+    }
+
+    rule = rules.get(request.endpoint)
+
+    if rule is None or request.method != "POST":
+        return
+
+    kind, limit, seconds = rule
+
+    identity = (
+        request.remote_addr
+        if kind == "ip"
+        else login_session.get("user_id")
+    )
+
+    if identity is None:
+        return
+
+    retry_after = check_limit(
+        request.endpoint,
+        str(identity),
+        limit,
+        seconds,
+        app.config["SECRET_KEY"],
+    )
+
+    if retry_after:
+        return(
+            jsonify(error=f"Too many requests. Try again in {retry_after} seconds"), 
+            429,
+            {"Retry-After": str(retry_after)},
+        )
+
+@app.cli.command("cleanup-request-limits")
+def cleanup_request_limits():
+    import time
+    cutoff = int(time.time()) - 86400
+
+    with Session.begin() as db:
+        db.execute(
+            delete(RequestLimit).where(RequestLimit.window < cutoff)
+        )
+
+    click.echo("Removed old request limit counters")
