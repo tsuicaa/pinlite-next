@@ -17,7 +17,7 @@ from storage import image_url, put_image, delete_images
 
 import click
 
-from quotas import check_quota, QuotaExceeded
+from quotas import check_quota, QuotaExceeded, account_usage, check_quota
 from limits import check_limit
 
 
@@ -986,3 +986,13 @@ def cleanup_request_limits():
         )
 
     click.echo("Removed old request limit counters")
+
+@app.get("/api/me/usage")
+def my_usage():
+    user_id = login_session.get("user_id")
+
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    with Session() as db:
+        return jsonify(account_usage(db, user_id))
