@@ -112,6 +112,10 @@ def health():
 
 @app.get("/api/pins")
 def public_pins():
+    search = request.args.get("q", "").strip()
+
+    if len(search) > 200:
+        return jsonify(error="Search must be max 200 characters"), 400
     before = request.args.get("before")
 
     if before is not None:
@@ -129,6 +133,13 @@ def public_pins():
         .order_by(Pin.id.desc())
         .limit(31)
     )
+
+    if search:
+        query = query.where(
+            Pin.search_document.bool_op("@@")(
+                func.websearch_to_tsquery("simple", search)
+            )
+        )
 
     if before is not None:
         query = query.where(Pin.id < before)

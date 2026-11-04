@@ -2,9 +2,10 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger, CheckConstraint, DateTime, ForeignKey,
-    Identity, Index, String, Text, func,
+    Identity, Index, String, Text, func, Computed,
 )
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import TSVECTOR
 
 from db import Base
 
@@ -101,6 +102,7 @@ class Pin(Base):
             name="pins_visibility_check",
         ),
         Index("pins_visbility_id_index", "visibility", "id"),
+        Index("pins_search_index", "search_document", postgresql_using="gin"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -122,6 +124,13 @@ class Pin(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    search_document: Mapped[str] = mapped_column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('simple'::regconfig, title || ' ' || description)",
+            persisted=True
+        ),
     )
 
 class CollectionPin(Base):

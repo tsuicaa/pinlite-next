@@ -24,49 +24,52 @@ function resetFeed() {
 }
 
 function renderPin(pin) {
-  cards.set(pin.id, pin);
-  const button = document.createElement('a');
-  button.className = 'pin';
+    cards.set(pin.id, pin);
+    const button = document.createElement('a');
+    button.className = 'pin';
 
-  const pinUrl= new URL("/", location.origin);
-  pinUrl.searchParams.set("pin", pin.id);
+    const pinUrl= new URL("/", location.origin);
+    pinUrl.searchParams.set("pin", pin.id);
 
-  const collectionId = new URLSearchParams(location.search).get("collection");
-  if (collectionId) {
-    pinUrl.searchParams.set("collection", collectionId);
-  } else if (new URLSearchParams(location.search).get("view") === "my-pins") {
-    pinUrl.searchParams.set("view", "my-pins");
-  }
+    const params = new URLSearchParams(location.search);
+    const collectionId = params.get("collection")
+    if (collectionId !== null) {
+        pinUrl.searchParams.set("collection", collectionId);
+    } else if (params.get("view") === "my-pins") {
+        pinUrl.searchParams.set("view", "my-pins");
+    } else if (params.get("q")) {
+        pinUrl.searchParams.set("q", params.get("q"));
+    }
 
-  button.href = pinUrl.pathname + pinUrl.search;
+    button.href = pinUrl.pathname + pinUrl.search;
   
-  button.dataset.pinId = pin.id;
-  button.setAttribute('aria-label', `Open pin: ${pin.title}`);
-  const image = document.createElement('img');
-  image.alt = pin.title;
-  image.loading = 'lazy';
-  image.decoding = 'async';
-  image.referrerPolicy = 'no-referrer';
-  image.src = pin.thumbnail || pin.image;
-  image.addEventListener('error', () => { image.classList.add('failed'); image.alt = 'Image unavailable'; });
-  const title = document.createElement('p');
+    button.dataset.pinId = pin.id;
+    button.setAttribute('aria-label', `Open pin: ${pin.title}`);
+    const image = document.createElement('img');
+    image.alt = pin.title;
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.referrerPolicy = 'no-referrer';
+    image.src = pin.thumbnail || pin.image;
+    image.addEventListener('error', () => { image.classList.add('failed'); image.alt = 'Image unavailable'; });
+    const title = document.createElement('p');
     title.textContent = pin.title;
-  button.append(image, title);
-  button.addEventListener('click', event => {
-    if (
-      event.defaultPrevented
-      || event.button !== 0
-      || event.ctrlKey
-      || event.metaKey
-      || event.shiftKey
-      || event.altKey
-    ) return;
+    button.append(image, title);
+    button.addEventListener('click', event => {
+        if (
+            event.defaultPrevented
+            || event.button !== 0
+            || event.ctrlKey
+            || event.metaKey
+            || event.shiftKey
+            || event.altKey
+        ) return;
 
-    event.preventDefault();
-    history.pushState(null, "", button.href);
-    showRoute();
-  });
-  return button;
+        event.preventDefault();
+        history.pushState(null, "", button.href);
+        showRoute();
+    });
+    return button;
 }
 
 async function loadPins() {
@@ -133,6 +136,11 @@ async function showRoute() {
     const myPins = collectionId === null
         && params.get("view") === "my-pins"
 
+    const search = collectionId === null && !myPins
+        ? (params.get("q") || "").trim()
+        : "";
+    $("query").value = search;
+
     const showingDetail = pinId !== null;
     const showingCollections = !showingDetail
         && params.get("view") === "collections";
@@ -144,7 +152,7 @@ async function showRoute() {
 
     $("detail").hidden = !showingDetail;
     $("collections-panel").hidden = !showingCollections;
-    $("feed-heading").hidden = !showingFeed || (collectionId === null && !myPins);
+    $("feed-heading").hidden = !showingFeed || (collectionId === null && !myPins && !search);
     grid.hidden = !showingFeed;
     $("sentinel").hidden = !showingFeed;
 
@@ -153,14 +161,20 @@ async function showRoute() {
             ? `/api/collections/${encodeURIComponent(collectionId)}/pins`
             : myPins
                 ? "/api/me/pins"
-                : "/api/pins";
+                : search
+                    ? `/api/pins?q=${encodeURIComponent(search)}`
+                    : "/api/pins";
 
         if (feedPath !== path) {
             resetFeed();
-            feedPath = path;
-            if (myPins) {
-                $("heading").textContent = "My pins";
+            if (collectionId === null) {
+                $("heading").textContent = myPins
+                    ? "My pins"
+                    : search
+                        ? `Search: ${search}`
+                        : "";
             }
+            feedPath = path;
             feedScroll = 0;
             loadPins();
         }
@@ -234,15 +248,10 @@ loadMore.addEventListener("click", loadPins);
 
 $("back").addEventListener("click", () => {
     const params = new URLSearchParams(location.search);
-    const collectionId = params.get("collection");
+    params.delete("pin");
 
-    const destination = collectionId !== null
-        ? `/?collection=${encodeURIComponent(collectionId)}`
-        : params.get("view") === "my-pins"
-            ? "/?view=my-pins"
-            : "/";
-
-    history.pushState(null, "", destination);
+    const query = params.toString();
+    history.pushState(null, "", query ? `/?${query}` : "/");
     showRoute();
 });
 
@@ -250,6 +259,19 @@ $("saved-pins").addEventListener("click", () => {
     history.pushState(null, "", "/?view=collections");
     showRoute();
 })
+
+$("search").addEventListener("submit", event => {
+    event.preventDefault();
+    const search = $("query").value.trim();
+    const url = new URL("/", location.origin);
+
+    if (search) {
+        url.searchParams.set("q", search);
+    }
+
+    history.pushState(null, "", url.pathname + url.search);
+    showRoute();
+});
 
 document.addEventListener("account-change", () => {
     const params = new URLSearchParams(location.search);
