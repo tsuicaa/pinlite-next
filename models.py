@@ -161,3 +161,36 @@ class RequestLimit(Base):
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     window: Mapped[int] = mapped_column(BigInteger)
     count: Mapped[int]
+
+class Tag(Base):
+    __tablename__ = "tags"
+    __table_args__ = (
+        Index(
+            "tags_search_index",
+            "search_document",
+            postgresql_using="gin",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True)
+    search_document: Mapped[str] = mapped_column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('simple'::regconfig, name)",
+            persisted=True,
+        ),
+    )
+
+class PinTag(Base):
+    __tablename__ = "pin_tags"
+
+    pin_id: Mapped[int] = mapped_column(
+        ForeignKey("pins.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    tag_id: Mapped[int] = mapped_column(
+        ForeignKey("tags.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )

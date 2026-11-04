@@ -190,7 +190,14 @@
             <p id="detail-description"></p>
             <textarea id="pin-edit-description" form="pin-edit-form"
                     maxlength="10000" rows="5" aria-label="Description" hidden></textarea>
+            <p id="detail-tags"></p>
 
+            <div id="pin-edit-tags-field" hidden>
+                <label for="pin-edit-tags">Tags</label><br>
+                <input id="pin-edit-tags" form="pin-edit-form" type="text"
+                        maxlength="2000" placeholder="robots, concept art">
+                <small>Separate tags with commas (maximum 20 tags)</small>
+            </div>
             <p id="pin-visibility-row" hidden>
             
             <span id="pin-visibility"></span>

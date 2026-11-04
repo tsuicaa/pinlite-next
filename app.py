@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import Session
-from models import Collection, CollectionPin, Media, Pin, User, RequestLimit
+from models import Collection, CollectionPin, Media, Pin, User, RequestLimit, Tag, PinTag
 
 from uuid import uuid4
 from images import prepare_image
@@ -20,6 +20,7 @@ import click
 from quotas import check_quota, QuotaExceeded, account_usage, check_quota
 from limits import check_limit
 
+from tags import get_tags, normalize_tags, replace_tags
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -113,7 +114,10 @@ def health():
 @app.get("/api/pins")
 def public_pins():
     search = request.args.get("q", "").strip()
-
+    tag = " ".join(request.args.get("tag", "").split()).casefold()
+    if len(tag) > 80:
+        return jsonify(error="Tag must be max 80 characters"), 400
+    
     if len(search) > 200:
         return jsonify(error="Search must be max 200 characters"), 400
     before = request.args.get("before")
@@ -135,11 +139,26 @@ def public_pins():
     )
 
     if search:
-        query = query.where(
-            Pin.search_document.bool_op("@@")(
-                func.websearch_to_tsquery("simple", search)
-            )
+        terms = func.websearch_to_tsquery("simple", search)
+
+        matching_tag_pins = (
+            select(PinTag.pin_id)
+            .join(Tag, Tag.id == PinTag.tag_id)
+            .where(Tag.search_document.bool_op("@@")(terms))
         )
+
+        query = query.where(
+            Pin.search_document.bool_op("@@")(terms)
+            | Pin.id.in_(matching_tag_pins)
+        )
+
+    if tag:
+        tagged_pins = (
+            select(PinTag.pin_id)
+            .join(Tag, Tag.id == PinTag.tag_id)
+            .where(Tag.name == tag)
+        )
+        query = query.where(Pin.id.in_(tagged_pins))
 
     if before is not None:
         query = query.where(Pin.id < before)
@@ -176,7 +195,9 @@ def pin_detail(pin_id):
         if row is None:
             return jsonify(error="Pin not found"), 404
 
-        return jsonify(serialize_pin(*row))
+        result = serialize_pin(*row)
+        result["tags"] = get_tags(session, pin_id)
+        return jsonify(result)
 
 @app.post("/api/register")
 def register():
@@ -767,12 +788,18 @@ def edit_pin(pin_id):
     if not isinstance(description, str) or len(description) > 10000:
         return jsonify(error="Description must be max 10000 characters"), 400
 
+    try:
+        tags = normalize_tags(data["tags"]) if "tags" in data else None
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+
     with Session.begin() as db:
         pin = db.scalar(
             select(Pin).where(
                 Pin.id == pin_id,
                 Pin.creator_id == user_id,
             )
+            .with_for_update()
         )
 
         if pin is None:
@@ -781,12 +808,15 @@ def edit_pin(pin_id):
         pin.title = title.strip()
         pin.visibility = visibility
         pin.description = description.strip()
+        if tags is not None:
+            replace_tags(db, pin.id, tags)
 
         result = {
             "id": str(pin.id),
             "title": pin.title,
             "description": pin.description,
-            "visiblity": pin.visibility,
+            "visibility": pin.visibility,
+            "tags": get_tags(db, pin.id),
         }
 
     return jsonify(pin=result)

@@ -7,6 +7,7 @@
   const description = get("pin-edit-description");
   const visibility = get("pin-edit-visibility");
   const status = get("pin-actions-status");
+  const tags = get("pin-edit-tags");
 
   let pin = null;
   let busy = false;
@@ -24,16 +25,28 @@
     get("pin-delete").hidden = editing;
     get("pin-edit-save").hidden = !editing;
     get("pin-edit-cancel").hidden = !editing;
+    get("detail-tags").hidden = editing;
+    get("pin-edit-tags-field").hidden = !editing;
   }
 
   function render() {
+    const names = pin.tags || [];
     get("detail-title").textContent = pin.title;
     get("detail-description").textContent = pin.description;
     get("pin-visibility").textContent = pin.visibility;
+    get("detail-tags").replaceChildren(
+      ...names.map(name => {
+        const link = document.createElement("a");
+        link.href = `/?tag=${encodeURIComponent(name)}`;
+        link.textContent = name;
+        return link;
+      })
+    );
 
     title.value = pin.title;
     description.value = pin.description;
     visibility.value = pin.visibility;
+    tags.value = names.join(", ");
   }
 
   document.addEventListener("pin-change", () => {
@@ -42,6 +55,7 @@
     get("pin-visibility-row").hidden = true;
     setEditing(false);
     status.textContent = "";
+    get("detail-tags").textContent = "";
   });
 
   document.addEventListener("pin-detail", event => {
@@ -120,6 +134,7 @@
       title: title.value.trim(),
       description: description.value,
       visibility: visibility.value,
+      tags: tags.value.split(",").map(tag => tag.trim()).filter(Boolean),
     });
   });
 

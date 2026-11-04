@@ -37,8 +37,12 @@ function renderPin(pin) {
         pinUrl.searchParams.set("collection", collectionId);
     } else if (params.get("view") === "my-pins") {
         pinUrl.searchParams.set("view", "my-pins");
-    } else if (params.get("q")) {
-        pinUrl.searchParams.set("q", params.get("q"));
+    } else {
+        for (const key of ["q", "tag"]) {
+            if (params.get(key)) {
+                pinUrl.searchParams.set(key, params.get(key));
+            }
+        }
     }
 
     button.href = pinUrl.pathname + pinUrl.search;
@@ -141,6 +145,10 @@ async function showRoute() {
         : "";
     $("query").value = search;
 
+    const tag = collectionId === null && !myPins
+        ? (params.get("tag") || "").trim()
+        : "";
+
     const showingDetail = pinId !== null;
     const showingCollections = !showingDetail
         && params.get("view") === "collections";
@@ -152,32 +160,43 @@ async function showRoute() {
 
     $("detail").hidden = !showingDetail;
     $("collections-panel").hidden = !showingCollections;
-    $("feed-heading").hidden = !showingFeed || (collectionId === null && !myPins && !search);
+    $("feed-heading").hidden = !showingFeed || (collectionId === null && !myPins && !search && !tag);
     grid.hidden = !showingFeed;
     $("sentinel").hidden = !showingFeed;
 
     if (showingFeed) {
-        const path = collectionId !== null
-            ? `/api/collections/${encodeURIComponent(collectionId)}/pins`
-            : myPins
-                ? "/api/me/pins"
-                : search
-                    ? `/api/pins?q=${encodeURIComponent(search)}`
-                    : "/api/pins";
+        const url = new URL(
+            collectionId !== null
+                ? `/api/collections/${encodeURIComponent(collectionId)}/pins`
+                : myPins
+                    ? "/api/me/pins"
+                    : "/api/pins",
+            location.origin
+        );
+
+        if (collectionId === null && !myPins) {
+            if (search) url.searchParams.set("q", search);
+            if (tag) url.searchParams.set("tag", tag);
+        }
+
+        const path = url.pathname + url.search;
 
         if (feedPath !== path) {
             resetFeed();
-            if (collectionId === null) {
-                $("heading").textContent = myPins
-                    ? "My pins"
-                    : search
-                        ? `Search: ${search}`
-                        : "";
-            }
             feedPath = path;
             feedScroll = 0;
             loadPins();
         }
+
+        if (collectionId === null) {
+            $("heading").textContent = myPins
+                ? "My pins"
+                : [
+                    search ? `Search: ${search}` : "",
+                    tag ? `Tag: ${tag}` : "",
+                ].filter(Boolean).join(" | ");
+        }
+
         requestAnimationFrame(() => window.scrollTo(0, feedScroll));
         return;
     }
@@ -200,14 +219,14 @@ async function showRoute() {
 
     try {
         const response = await fetch(
-        `/api/pins/${encodeURIComponent(pinId)}`,
-        { signal: controller.signal }
+            `/api/pins/${encodeURIComponent(pinId)}`,
+            { signal: controller.signal }
         );
 
         if (!response.ok) {
-        throw new Error(
-            response.status === 404 ? "Pin not found" : "Could not load pin."
-        );
+            throw new Error(
+                response.status === 404 ? "Pin not found" : "Could not load pin."
+            );
         }
 
         const pin = await response.json();
@@ -230,16 +249,16 @@ async function showRoute() {
         $("detail-status").textContent = "";
 
         if (pin.source_url) {
-        const source = new URL(pin.source_url);
+            const source = new URL(pin.source_url);
 
-        if (["http:", "https:"].includes(source.protocol)) {
-            $("source-link").href = source.href;
-            $("source-link").hidden = false;
-        }
+            if (["http:", "https:"].includes(source.protocol)) {
+                $("source-link").href = source.href;
+                $("source-link").hidden = false;
+            }
         }
     } catch (error) {
         if (error.name !== "AbortError") {
-        $("detail-status").textContent = error.message;
+            $("detail-status").textContent = error.message;
         }
     }
 }
@@ -264,6 +283,11 @@ $("search").addEventListener("submit", event => {
     event.preventDefault();
     const search = $("query").value.trim();
     const url = new URL("/", location.origin);
+    const params = new URLSearchParams(location.search);
+
+    if (!params.has("collection") && !params.has("view") && params.get("tag")) {
+        url.searchParams.set("tag", params.get("tag"));
+    }
 
     if (search) {
         url.searchParams.set("q", search);

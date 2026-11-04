@@ -382,7 +382,13 @@ button:disabled {
 
 #pin-edit-description {
   resize: vertical;
-}a
+}
+
+#detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
 #feed-heading {
   padding: 8px;
