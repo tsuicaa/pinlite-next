@@ -86,12 +86,14 @@
     const controls = document.createElement("div");
     const rename = document.createElement("button");
     const remove = document.createElement("button");
-
+    const sharing = document.createElement("button");
+    sharing.type = "button";
+    
     link.href = `/?collection=${encodeURIComponent(collection.id)}`;
     preview.className = "collection-preview";
     preview.setAttribute("aria-hidden", "true");
  
-    if (collection.previews.length >= 4) {
+    if (collection.previews?.length >= 4) {
       for (let index = 0; index < 4; index++) {
         const cell = document.createElement("div");
         const url = collection.previews?.[index];
@@ -115,6 +117,26 @@
       preview.classList.add("empty");
     }
 
+    function renderSharing() {
+      sharing.textContent = collection.visibility === "public"
+        ? "Make private"
+        : "Make public";
+    }
+  
+    renderSharing();
+
+    sharing.addEventListener("click", () => {
+      const makingPublic = collection.visibility !== "public";
+
+      if (makingPublic && !confirm(
+        "Make this collection public? Anyone can view its public pins"
+      )) return;
+
+      update("PATCH", {
+        visibility: makingPublic ? "public" : "private",
+      });
+    });
+
     title.textContent = collection.name;
     link.append(preview, title);
 
@@ -126,14 +148,14 @@
     remove.className = "red";
 
     controls.className = "collection-controls";
-    controls.append(rename, " ", remove);
+    controls.append(rename, " ", sharing, " ", remove);
     item.append(link, controls);
 
     async function update(method, data) {
       const version = accountVersion;
       rename.disabled = true;
       remove.disabled = true;
-      status.textContent = method === "DELETE" ? "Deleting..." : "Renaming...";
+      status.textContent = method === "DELETE" ? "Deleting..." : "Updating...";
 
       try {
         const response = await fetch(`/api/collections/${collection.id}`, {
@@ -159,6 +181,8 @@
           savedCollections.delete(collection.id);
         } else {
           collection.name = result.collection.name;
+          collection.visibility = result.collection.visibility;
+          renderSharing();
           title.textContent = collection.name;
 
           if (option) {

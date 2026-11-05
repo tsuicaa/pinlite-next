@@ -456,9 +456,6 @@ def save_to_collection(collection_id, pin_id):
 def collection_pins(collection_id):
     user_id = login_session.get("user_id")
 
-    if user_id is None:
-        return jsonify(error="Sign in first"), 401
-
     if not 0 < collection_id <= 9223372036854775807:
         return jsonify(error="Collection not found"), 404
 
@@ -476,12 +473,17 @@ def collection_pins(collection_id):
         collection = db.scalar(
             select(Collection).where(
                 Collection.id == collection_id,
-                Collection.owner_id == user_id,
+                (Collection.owner_id == user_id)
+                | (Collection.visibility == "public"),
             )
         )
 
         if collection is None:
             return jsonify(error="Collection not found"), 404
+        
+        pin_visible = Pin.visibility == "public"
+        if collection.owner_id == user_id:
+            pin_visible = pin_visible | (Pin.creator_id == user_id)
 
         query = (
             select(Pin, Media)
@@ -489,10 +491,7 @@ def collection_pins(collection_id):
             .join(CollectionPin, CollectionPin.pin_id == Pin.id)
             .where (
                 CollectionPin.collection_id == collection_id,
-                (
-                    (Pin.visibility == "public")
-                    | (Pin.creator_id == user_id)
-                ),
+                pin_visible,
             )
             .order_by(Pin.id.desc())
             .limit(31)
@@ -517,7 +516,10 @@ def collection_pins(collection_id):
             "next_cursor": pins[-1]["id"] if has_more else None,
         }
 
-    return jsonify(result)
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
 
 @app.get("/api/pins/<int:pin_id>/collections")
 def pin_collections(pin_id):
@@ -588,10 +590,17 @@ def rename_collection(collection_id):
     if not isinstance(data, dict):
         return jsonify(error="Expected JSON object"), 400
 
-    name = data.get("name")
+    if "name" not in data and "visibility" not in data:
+        return jsonify(error="Provide name or visibility"), 400
 
-    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 200:
+    name = data.get("name")
+    visibility = data.get("visibility")
+
+    if "name" in data and (not isinstance(name, str) or not 1 <= len(name.strip()) <= 200):
         return jsonify(error="Name must be 1-200 characters"), 400
+
+    if "visibility" in data and visibility not in ("public", "private"):
+        return jsonify(error="Invalid visibility"), 400 
 
     with Session.begin() as db:
         collection = db.scalar(
@@ -604,11 +613,16 @@ def rename_collection(collection_id):
         if collection is None:
             return jsonify(error="Collection not found"), 404
 
-        collection.name = name.strip()
+        if name is not None:
+            collection.name = name.strip()
+
+        if visibility is not None:
+            collection.visibility = visibility
 
         result = {
             "id": str(collection.id),
             "name": collection.name,
+            "visibility": collection.visibility,
         }
 
     return jsonify(collection=result)
