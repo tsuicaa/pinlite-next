@@ -17,12 +17,14 @@ from storage import image_url, put_image, delete_images
 
 import click
 
-from quotas import check_quota, QuotaExceeded, account_usage, check_quota
+from quotas import check_quota, QuotaExceeded, account_usage, check_quota, PIN_LIMIT
 from limits import check_limit
 
 from tags import get_tags, normalize_tags, replace_tags
 
-from pinterest_boards import BoardPreviewError, BoardURLError, preview_board
+from pinterest_boards import BoardPreviewError, BoardURLError, preview_board, board_path, board_pin_page
+
+from hashlib import sha256
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -1018,6 +1020,7 @@ def limit_requests():
         "create_uploaded_pin": ("account", 6, 60),
         "create_pin": ("account", 20, 60),
         "preview_pinterest_board": ("account", 4, 60),
+        "import_pinterest_section": ("account", 4, 60),
     }
 
     rule = rules.get(request.endpoint)
@@ -1155,3 +1158,171 @@ def preview_pinterest_board():
         return jsonify(error=str(error)), 400
     except BoardPreviewError as error:
         return jsonify(error=str(error)), 502
+
+@app.post("/api/import/pinterest/section")
+def import_pinterest_section():
+    user_id = login_session.get("user_id")
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    pin_visibility = data.get("pin_visibility", "private")
+
+    if pin_visibility not in ("public", "private"):
+        return jsonify(error="Invalid pin visibility"), 400
+
+    use_section_tags = data.get("use_section_tags", False)
+
+    if not isinstance(use_section_tags, bool):
+        return jsonify(error="use_section_tags must be true or false"), 400
+
+    url = data.get("url")
+    section_id = data.get("section_id")
+    cursor = data.get("cursor")
+
+    if not isinstance(section_id, str):
+        return jsonify(error="Choose a board section"), 400
+
+    if cursor is not None and (
+        not isinstance(cursor, str) or not 1 <= len(cursor) <= 8192
+    ):
+        return jsonify(error="Invalid import cursor"), 400
+
+    try:
+        board = preview_board(url)
+        _, _, source = board_path(url)
+
+        section = next(
+            (item for item in board["sections"] if item["id"] == section_id),
+            None,
+        )
+        if section is None:
+            return jsonify(error="Section not found in the board preview"), 400
+
+        section_tag = " ".join(
+            str(section["name"]).replace(",", " ").split()
+        ).casefold()[:80].strip()
+
+        page = board_pin_page(
+            source, board["id"], section_id=section_id, cursor=cursor
+        )
+    except BoardURLError as error:
+        return jsonify(error=str(error)), 400
+    except BoardPreviewError as error:
+        return jsonify(error=str(error)), 502
+
+    if not page["pins"]:
+        return jsonify(
+            added=0, reused=0, linked=0,
+            next_cursor=page["next_cursor"],
+            quota_reached=False,
+        )
+
+    added = reused = linked = 0
+    quota_reached = False
+
+    with Session.begin() as db:
+        account_id = db.scalar(
+            select(User.id).where(User.id == user_id).with_for_update()
+        )
+        if account_id is None:
+            return jsonify(error="Account not found"), 401
+
+        remaining = max(0, PIN_LIMIT - account_usage(db, user_id)["pins"])
+
+        def get_collection(key, name, parent_id=None):
+            collection = db.scalar(
+                select(Collection).where(
+                    Collection.owner_id == user_id,
+                    Collection.import_key == key,
+                )
+            )
+            if collection is None:
+                collection = Collection(
+                    owner_id=user_id,
+                    parent_id=parent_id,
+                    name=str(name)[:200],
+                    visibility="private",
+                    import_key=key,
+                )
+                db.add(collection)
+                db.flush()
+            return collection
+
+        board_key = f"pinterest:board:{board['id']}"
+        parent = get_collection(board_key, board["name"])
+        child = get_collection(
+            f"{board_key}:section:{section_id}",
+            section["name"],
+            parent.id,
+        )
+
+        for item in page["pins"]:
+            # Pinterest CDN sizes share an asset path after the size segment.
+            asset = urlsplit(item["image_url"]).path.split("/", 2)[-1]
+            digest = sha256(asset.encode()).hexdigest()
+            pin_key = f"{board_key}:image:{digest}"
+
+            pin = db.scalar(
+                select(Pin).where(
+                    Pin.creator_id == user_id,
+                    Pin.import_key == pin_key,
+                )
+            )
+
+            if pin is None:
+                if remaining == 0:
+                    quota_reached = True
+                    break
+
+                media = Media(
+                    storage_kind="external",
+                    external_url=item["image_url"],
+                )
+                db.add(media)
+                db.flush()
+
+                pin = Pin(
+                    creator_id=user_id,
+                    media_id=media.id,
+                    title=item["title"],
+                    description=item["description"],
+                    source_url=item["source_url"],
+                    visibility=pin_visibility,
+                    import_key=pin_key,
+                )
+                db.add(pin)
+                db.flush()
+
+                if use_section_tags and section_tag:
+                    replace_tags(db, pin.id, [section_tag])
+
+                added += 1
+                remaining -= 1
+            else:
+                reused += 1
+
+            membership = db.scalar(
+                insert(CollectionPin)
+                .values(collection_id=child.id, pin_id=pin.id)
+                .on_conflict_do_nothing(
+                    index_elements=["collection_id", "pin_id"]
+                )
+                .returning(CollectionPin.pin_id)
+            )
+            if membership is not None:
+                linked += 1
+
+        result = {
+            "collection_id": str(child.id),
+            "added": added,
+            "reused": reused,
+            "linked": linked,
+            "next_cursor": cursor if quota_reached else page["next_cursor"],
+            "quota_reached": quota_reached,
+        }
+
+    return jsonify(result)

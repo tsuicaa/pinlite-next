@@ -71,13 +71,24 @@ def resource(name, source, options):
         if len(body) > 5_000_000:
             raise BoardPreviewError("Pinterest's response was too large")
 
-        envelope = json.loads(body)["resource_response"]
+        payload = json.loads(body)
+        envelope = payload["resource_response"]
         data = envelope["data"]
 
         if data is None or envelope.get("error") or envelope.get("status") == "failure":
             raise BoardPreviewError("Pinterest did not return public board data.")
 
-        return data, envelope.get("bookmark")
+        bookmark = envelope.get("bookmark")
+        if not bookmark:
+            bookmarks = (
+                (payload.get("resource") or {})
+                .get("options", {})
+                .get("bookmarks")
+            )
+            if isinstance(bookmarks, list) and bookmarks:
+                bookmark = bookmarks[0]
+
+        return data, bookmark
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
         raise BoardPreviewError("Could not read the board from Pinterest") from error
 
@@ -126,6 +137,7 @@ def preview_board(value):
 
     return {
         "name": board.get("name") or slug,
+        "id": board_id,
         "url": BASE + source,
         "reported_pin_count": board.get("pin_count"),
         "first_page_pin_count": sum(
@@ -140,3 +152,78 @@ def preview_board(value):
         ],
         "has_more_sections": bool(section_bookmark and section_bookmark != "-end-"),
     }
+
+def board_pin_page(source, board_id, *, section_id=None, cursor=None):
+    options = {"field_set_key": "react_grid_pin", "page_size": 25}
+
+    if section_id is None:
+        name = "BoardFeedResource"
+        options.update(
+            board_id=board_id,
+            filter_section_pins=False,
+            prepend=False,
+        )
+    else:
+        name = "BoardSectionPinsResource"
+        options["section_id"] = section_id
+
+    if cursor:
+        options["bookmarks"] = [cursor]
+
+    data, bookmark = resource(name, source, options)
+    feed = rows(data)
+    pins = []
+
+    for row in feed:
+        images = row.get("images")
+        if not isinstance(images, dict):
+            continue
+
+        image_url = None
+
+        for size in ("orig", "736x", "564x", "474x", "236x"):
+            image = images.get(size)
+            url = image.get("url") if isinstance(image, dict) else None
+
+            if not isinstance(url, str):
+                continue
+
+            try:
+                parsed = urlsplit(url)
+            except ValueError:
+                continue
+
+            if (
+                parsed.scheme == "https"
+                and parsed.netloc.lower() == "i.pinimg.com"
+                and parsed.path not in ("", "/")
+            ):
+                image_url = url
+                break
+
+        if image_url is None:
+            continue
+
+        pin_id = str(row.get("id", ""))
+        source_url = (
+            f"{BASE}/pin/{pin_id}/"
+            if re.fullmatch(r"[0-9]{1,30}", pin_id)
+            else None
+        )
+
+        description = row.get("description")
+        if not isinstance(description, str):
+            description = ""
+
+        pins.append({
+            "pinterest_id": pin_id,
+            "title": str(row.get("title") or row.get("grid_title") or "Untitled pin")[:300],
+            "description": description.replace("\x00", "").strip()[:10000],
+            "image_url": image_url,
+            "source_url": source_url,
+        })
+
+    if not feed or not isinstance(bookmark, str) or bookmark in ("", "-end-", cursor):
+        bookmark = None
+
+    return {"pins": pins, "next_cursor": bookmark}

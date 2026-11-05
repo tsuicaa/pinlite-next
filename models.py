@@ -35,6 +35,7 @@ class Collection(Base):
             "parent_id IS NULL OR parent_id <> id",
             name="collections_parent_check",
         ),
+        Index("collections_owner_import_key_index", "owner_id", "import_key", unique=True),
     )
 
     id: Mapped[int] = mapped_column(
@@ -56,6 +57,7 @@ class Collection(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    import_key: Mapped[str | None] = mapped_column(Text)
 
 class Media(Base):
     __tablename__ = "media"
@@ -103,6 +105,7 @@ class Pin(Base):
         ),
         Index("pins_visbility_id_index", "visibility", "id"),
         Index("pins_search_index", "search_document", postgresql_using="gin"),
+        Index("pins_creator_import_key_index", "creator_id", "import_key", unique=True)
     )
 
     id: Mapped[int] = mapped_column(
@@ -132,6 +135,7 @@ class Pin(Base):
             persisted=True
         ),
     )
+    import_key: Mapped[str | None] = mapped_column(Text)
 
 class CollectionPin(Base):
     __tablename__ = "collection_pins"
