@@ -19,6 +19,7 @@
         <script src="/static/masonry.js" defer></script>
         <script src="/static/collections.js" defer></script>
         <script src="/static/create-pin.js" defer></script>
+        <script src="/static/pinterest-import.js" defer></script>
         <script src="/static/account.js" defer></script>
         <script src="/static/pin-actions.js" defer></script>
         <script src="/static/app.js" defer></script>
@@ -85,6 +86,21 @@
                 <label for="collection-name">New collection</label>
                 <input id="collection-name" type="text" maxlength="200" required>
                 <button type="submit">Create</button>
+            </form>
+            <form id="pinterest-preview-form" hidden>
+                <label for="pinterest-board-url">Public Pinterest board URL</label>
+                <input id="pinterest-board-url" type="text" inputmode="url"
+                        maxlength="2048" placeholder="https://www.pinterest.com/user/board/"
+                        required>
+                <button type="submit">Preview board</button>
+
+                <p id="pinterest-preview-status" role="status"></p>
+
+                <div id="pinterest-preview-result" hidden>
+                    <h3 id="pinterest-preview-name"></h3>
+                    <p id="pinterest-preview-count"></p>
+                    <ul id="pinterest-preview-sections"></ul>
+                </div>
             </form>
             <p id="collections-status" role="status">Checking sign-in...</p>
             <ul id="collections-list"></ul>

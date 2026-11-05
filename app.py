@@ -22,6 +22,8 @@ from limits import check_limit
 
 from tags import get_tags, normalize_tags, replace_tags
 
+from pinterest_boards import BoardPreviewError, BoardURLError, preview_board
+
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
 app = Flask(__name__, static_folder="public", static_url_path="/static")
@@ -1015,6 +1017,7 @@ def limit_requests():
         "register": ("ip", 3, 3600),
         "create_uploaded_pin": ("account", 6, 60),
         "create_pin": ("account", 20, 60),
+        "preview_pinterest_board": ("account", 4, 60),
     }
 
     rule = rules.get(request.endpoint)
@@ -1135,3 +1138,20 @@ def related_pins(pin_id):
             next_cursor = f"{last_score}:{last_pin.id}"
 
     return jsonify(pins=pins, next_cursor=next_cursor)
+
+@app.post("/api/import/pinterest/preview")
+def preview_pinterest_board():
+    if login_session.get("user_id") is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+
+    if not isinstance(data, dict):
+        return jsonify(error="Expected a JSON object"), 400
+
+    try:
+        return jsonify(preview_board(data.get("url")))
+    except BoardURLError as error:
+        return jsonify(error=str(error)), 400
+    except BoardPreviewError as error:
+        return jsonify(error=str(error)), 502
