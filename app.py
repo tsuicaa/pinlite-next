@@ -1055,3 +1055,69 @@ def my_usage():
 
     with Session() as db:
         return jsonify(account_usage(db, user_id))
+
+
+@app.get("/api/pins/<int:pin_id>/related")
+def related_pins(pin_id):
+    if not 0 < pin_id <= 9223372036854775807:
+        return jsonify(error="Pin not found"), 404
+
+    before = request.args.get("before")
+
+    if before is not None:
+        try:
+            score, last_id = map(int, before.split(":"))
+            if not (1 <= score <= 20 and 0 < last_id <= 9223372036854775807):
+                raise ValueError
+        except ValueError:
+            return jsonify(error="Invalid pagination cursor"), 400
+
+    source_tags = select(PinTag.tag_id).where(PinTag.pin_id == pin_id)
+
+    matches = (
+        select(PinTag.pin_id, func.count().label("score"))
+        .where(
+            PinTag.tag_id.in_(source_tags),
+            PinTag.pin_id != pin_id,
+        )
+        .group_by(PinTag.pin_id)
+        .subquery()
+    )
+
+    query = (
+        select(Pin, Media, matches.c.score)
+        .join(matches, matches.c.pin_id == Pin.id)
+        .join(Media, Media.id == Pin.media_id)
+        .where(Pin.visibility == "public")
+        .order_by(matches.c.score.desc(), Pin.id.desc())
+        .limit(13)
+    )
+
+    if before is not None:
+        query = query.where(
+            (matches.c.score < score)
+            | ((matches.c.score == score) & (Pin.id < last_id))
+        )
+
+    with Session() as db:
+        source = db.scalar(
+            select(Pin.id).where(
+                Pin.id == pin_id,
+                (Pin.visibility == "public")
+                | (Pin.creator_id == login_session.get("user_id")),
+            )
+        )
+
+        if source is None:
+            return jsonify(error="Pin not found"), 404
+
+        rows = db.execute(query).all()
+        page = rows[:12]
+        pins = [serialize_pin(pin, media) for pin, media, _ in page]
+
+        next_cursor = None
+        if len(rows) > 12:
+            last_pin, _, last_score = page[-1]
+            next_cursor = f"{last_score}:{last_pin.id}"
+
+    return jsonify(pins=pins, next_cursor=next_cursor)

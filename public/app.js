@@ -322,5 +322,75 @@ document.addEventListener("pin-updated", resetFeed);
 
 window.addEventListener("popstate", showRoute);
 
+const relatedSection = $("related-pins");
+const relatedGrid = $("related-grid");
+const relatedMore = $("related-more");
+const relatedStatus = $("related-status");
+
+let relatedController = null;
+let relatedCursor = null;
+
+function resetRelated() {
+    relatedController?.abort();
+    relatedController = null;
+    relatedCursor = null;
+    relatedGrid.replaceChildren();
+    relatedSection.hidden = true;
+    relatedMore.hidden = true;
+    relatedMore.disabled = true;
+    relatedStatus.textContent = "";
+}
+
+async function loadRelated(pinId) {
+    if (relatedController) return;
+
+    const controller = new AbortController();
+    relatedController = controller;
+    relatedMore.disabled = true;
+    relatedStatus.textContent = "";
+
+    try {
+        const url = new URL(
+            `/api/pins/${encodeURIComponent(pinId)}/related`,
+            location.origin
+        );
+
+        if (relatedCursor) url.searchParams.set("before", relatedCursor);
+        const response = await fetch(url, {signal: controller.signal});
+        if (!response.ok) throw new Error("Can't load related pins");
+
+        const result = await response.json();
+        if (controller.signal.aborted) return;
+
+        relatedGrid.append(...result.pins.map(renderPin));
+        relatedcursor = result.next_cursor;
+        relatedSection.hidden = !relatedGrid.childElementCount;
+        relatedMore.hidden = !relatedCursor;
+    } catch {
+        if (!controller.signal.aborted){
+            relatedSection.hidden = false;
+            relatedStatus.textContent = "Can't load related pins";
+            relatedMore.hidden = false;
+        }
+    } finally {
+        if (relatedController === controller) {
+            relatedController = null;
+            relatedMore.disabled = false;
+        }
+    }
+}
+
+document.addEventListener("pin-change", resetRelated);
+
+document.addEventListener("pin-detail", event => {
+    if (event.detail.tags?.length) loadRelated(event.detail.id);
+});
+
+relatedMore.addEventListener("click", () => {
+    const pinId = new URLSearchParams(location.search).get("pin");
+    if (pinId) loadRelated(pinId);
+});
+
+setupMasonry(relatedGrid);
 setupMasonry(grid);
 showRoute();
