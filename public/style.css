@@ -465,6 +465,24 @@ button:disabled {
   padding: 6px;
 }
 
+.collection-children {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+
+.collection-children > li + li {
+  margin-top: 6px;
+}
+
+.collection-children .collection-preview {
+  display: none;
+}
+
+.collection-children h2 {
+  font-size: 1em;
+}
+
 #status-bar {
   z-index: 1;
   position: fixed;

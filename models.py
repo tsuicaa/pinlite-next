@@ -45,7 +45,8 @@ class Collection(Base):
         ForeignKey("users.id"), index=True
     )
     parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("collections.id"), index=True
+        ForeignKey("collections.id", ondelete="CASCADE"),
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(

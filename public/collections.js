@@ -80,6 +80,7 @@
   function renderCollection(collection) {
     const item = document.createElement("li");
     item.className = "pin collection-card";
+    item.dataset.parentId = collection.parent_id ?? "";
     const link = document.createElement("a");
     const preview = document.createElement("div");
     const title = document.createElement("h2");
@@ -191,9 +192,8 @@
         );
 
         if (method === "DELETE") {
-          item.remove();
-          option?.remove();
-          savedCollections.delete(collection.id);
+          location.reload();
+          return;
         } else {
           collection.name = result.collection.name;
           collection.visibility = result.collection.visibility;
@@ -238,7 +238,16 @@
   });
 
   remove.addEventListener("click", () => {
-    if (confirm(`Delete "${collection.name}"? This does not delete the pins.`)) {
+    const childCount = [...list.querySelectorAll("[data-parent-id]")]
+      .filter(card => card.dataset.parentId === collection.id).length;
+
+    const children = childCount
+      ? ` and ${childCount} sub-collection${childCount === 1 ? "" : "s"}`
+      : "";
+
+    if (confirm(
+      `Delete "${collection.name}"${children}? The pins themselves will be kept.`
+    )) {
       update("DELETE", {});
     }
   });
@@ -282,12 +291,45 @@
 
     status.textContent = "Loading...";
 
+    function renderCollectionList(collections) {
+      const cards = new Map(
+        collections.map(collection => [collection.id, renderCollection(collection)])
+      );
+
+      const roots = [];
+      const childLists = new Map();
+
+      for (const collection of collections) {
+        const card = cards.get(collection.id);
+        const parent = cards.get(collection.parent_id);
+
+        if (!parent) {
+          roots.push(card);
+          continue;
+        }
+
+        let children = childLists.get(collection.parent_id);
+
+        if (!children) {
+          children = document.createElement("ul");
+          children.className = "collection-children";
+          children.setAttribute("aria-label", "Sub-collections");
+          parent.append(children);
+          childLists.set(collection.parent_id, children);
+        }
+
+        children.append(card);
+      }
+
+      list.replaceChildren(...roots);
+    }
+
     try {
       const result = await api();
 
       if (version !== accountVersion) return;
 
-      list.replaceChildren(...result.collections.map(renderCollection));
+      renderCollectionList(result.collections);
       folders.replaceChildren(...result.collections.map(collection =>
         new Option(collection.name, collection.id)
       ));
