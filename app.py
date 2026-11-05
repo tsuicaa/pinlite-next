@@ -650,6 +650,11 @@ def create_pin():
     if not isinstance(data, dict):
         return jsonify(error="Expected JSON object"), 400
 
+    try:
+        tags = normalize_tags(data.get("tags", []))
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+
     title = data.get("title")
     image_url = data.get("image_url")
     visibility = data.get("visibility", "private")
@@ -715,7 +720,9 @@ def create_pin():
                 pin_id=pin.id,
             ))
 
+        replace_tags(db, pin.id, tags)
         result = serialize_pin(pin, media)
+        result["tags"] = tags
 
     return jsonify(pin=result), 201
 
@@ -867,6 +874,15 @@ def create_uploaded_pin():
         return jsonify(error="Choose an image"), 400
 
     try:
+        tags = normalize_tags([
+            value.strip()
+            for value in request.form.get("tags", "").split(",")
+            if value.strip()
+        ])
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+
+    try:
         prepared = prepare_image(file)
     except ValueError as error:
         return jsonify(error=str(error)), 400
@@ -920,7 +936,9 @@ def create_uploaded_pin():
                     pin_id=pin.id,
                 ))
 
+            replace_tags(db, pin.id, tags)
             result = serialize_pin(pin, media)
+            result["tags"] = tags
 
     except Exception:
         try:

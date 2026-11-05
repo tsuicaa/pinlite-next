@@ -546,7 +546,7 @@ footer {
   max-width: 100%;
 }
 
-#create-pin-form input[type="text"] {
+#create-pin-form #new-pin-title {
   font-size: 1.2em;
   font-family: serif;
   padding: 6px;

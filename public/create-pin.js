@@ -16,7 +16,7 @@
     const preview = get("preview");
     const clear = get("clear-btn");
 
-    let creating = false;    
+    let creating = false;
 
     function updateMode() {
         const uploading = mode.value === "upload";
@@ -101,7 +101,7 @@
         collection.replaceChildren(
             new Option("No collection", ""),
             ...[...get("pin-folder").options].map(option =>
-            new Option(option.textContent, option.value)
+                new Option(option.textContent, option.value)
             )
         );
 
@@ -144,7 +144,7 @@
 
         try {
             if (bitmap.width * bitmap.height > 20_000_000) {
-            throw new Error("Image must be at most 20 megapixels");
+                throw new Error("Image must be at most 20 megapixels");
             }
 
             canvas.width = bitmap.width;
@@ -156,7 +156,7 @@
             context.drawImage(bitmap, 0, 0);
 
             const blob = await new Promise(resolve => {
-            canvas.toBlob(resolve, "image/webp", 0.85);
+                canvas.toBlob(resolve, "image/webp", 0.85);
             });
 
             if (!blob || blob.type !== "image/webp") return file;
@@ -166,34 +166,34 @@
             bitmap.close();
             canvas.width = canvas.height = 0;
         }
-        }
+    }
 
-        function uploadImage(body, onProgress, onFinishing) {
+    function uploadImage(body, onProgress, onFinishing) {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
 
             xhr.upload.onprogress = event => {
-            onProgress(event.lengthComputable
-                ? Math.round(event.loaded / event.total * 100)
-                : null);
+                onProgress(event.lengthComputable
+                    ? Math.round(event.loaded / event.total * 100)
+                    : null);
             };
 
             xhr.upload.onload = onFinishing;
 
             xhr.onload = () => {
-            if (xhr.status === 413) {
-                reject(new Error("Upload is too large."));
-                return;
-            }
+                if (xhr.status === 413) {
+                    reject(new Error("Upload is too large."));
+                    return;
+                }
 
-            const result = xhr.response;
+                const result = xhr.response;
 
-            if (xhr.status < 200 || xhr.status >= 300 || !result) {
-                reject(new Error(result?.error || "Can't upload image"));
-                return;
-            }
+                if (xhr.status < 200 || xhr.status >= 300 || !result) {
+                    reject(new Error(result?.error || "Can't upload image"));
+                    return;
+                }
 
-            resolve(result);
+                resolve(result);
             };
 
             xhr.onerror = () => reject(new Error("Upload connection failed"));
@@ -203,7 +203,7 @@
             xhr.responseType = "json";
             xhr.send(body);
         });
-        }
+    }
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -222,6 +222,10 @@
         const visibility = get("new-pin-visibility").value;
         const collectionId = collection.value;
         const externalUrl = imageUrl.value.trim();
+        const tags = get("new-pin-tags").value
+            .split(",")
+            .map(tag => tag.trim())
+            .filter(Boolean);
 
         creating = true;
         submit.disabled = true;
@@ -232,66 +236,68 @@
             let result;
 
             if (uploading) {
-            status.textContent = "Reticulating Splines...";
+                status.textContent = "Reticulating Splines...";
 
-            const prepared = await convertImage(selectedFile);
-            if (version !== accountVersion) return;
-
-            if (prepared.size > 10 * 1024 * 1024) {
-                throw new Error("Maximum image size is 10 MB");
-            }
-
-            const body = new FormData();
-            body.append("image", prepared);
-            body.append("title", title);
-            body.append("visibility", visibility);
-            body.append("collection_id", collectionId);
-
-            status.textContent = "Uploading...";
-
-            result = await uploadImage(
-                body,
-                percent => {
+                const prepared = await convertImage(selectedFile);
                 if (version !== accountVersion) return;
 
-                if (percent === null) {
-                    progress.removeAttribute("value");
-                    status.textContent = "Uploading...";
-                } else {
-                    progress.value = percent;
-                    status.textContent = `Uploading: ${percent}%`;
+                if (prepared.size > 10 * 1024 * 1024) {
+                    throw new Error("Maximum image size is 10 MB");
                 }
-                },
-                () => {
-                if (version !== accountVersion) return;
 
-                progress.removeAttribute("value");
-                status.textContent = "Finishing...";
-                }
-            );
+                const body = new FormData();
+                body.append("image", prepared);
+                body.append("title", title);
+                body.append("visibility", visibility);
+                body.append("collection_id", collectionId);
+                body.append("tags", tags.join(","));
+
+                status.textContent = "Uploading...";
+
+                result = await uploadImage(
+                    body,
+                    percent => {
+                        if (version !== accountVersion) return;
+
+                        if (percent === null) {
+                            progress.removeAttribute("value");
+                            status.textContent = "Uploading...";
+                        } else {
+                            progress.value = percent;
+                            status.textContent = `Uploading: ${percent}%`;
+                        }
+                    },
+                    () => {
+                        if (version !== accountVersion) return;
+
+                        progress.removeAttribute("value");
+                        status.textContent = "Finishing...";
+                    }
+                );
             } else {
-            status.textContent = "Creating...";
+                status.textContent = "Creating...";
 
-            const response = await fetch("/api/pins", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                title,
-                image_url: externalUrl,
-                visibility,
-                collection_id: collectionId,
-                }),
-            });
+                const response = await fetch("/api/pins", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        title,
+                        image_url: externalUrl,
+                        visibility,
+                        collection_id: collectionId,
+                        tags,
+                    }),
+                });
 
-            if (!response.headers.get("Content-Type")?.includes("application/json")) {
-                throw new Error("Can't create pin");
-            }
+                if (!response.headers.get("Content-Type")?.includes("application/json")) {
+                    throw new Error("Can't create pin");
+                }
 
-            result = await response.json();
+                result = await response.json();
 
-            if (!response.ok) {
-                throw new Error(result.error || "Can't create pin");
-            }
+                if (!response.ok) {
+                    throw new Error(result.error || "Can't create pin");
+                }
             }
 
             if (version !== accountVersion) return;
@@ -299,15 +305,15 @@
             location.href = `/?view=my-pins&pin=${encodeURIComponent(result.pin.id)}`;
         } catch (error) {
             if (version === accountVersion) {
-            status.textContent = error.message;
+                status.textContent = error.message;
             }
         } finally {
             creating = false;
 
             if (version === accountVersion) {
-            submit.disabled = false;
-            progress.hidden = true;
+                submit.disabled = false;
+                progress.hidden = true;
             }
         }
-        });
+    });
 })();

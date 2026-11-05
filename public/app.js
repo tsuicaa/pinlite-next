@@ -28,7 +28,7 @@ function renderPin(pin) {
     const button = document.createElement('a');
     button.className = 'pin';
 
-    const pinUrl= new URL("/", location.origin);
+    const pinUrl = new URL("/", location.origin);
     pinUrl.searchParams.set("pin", pin.id);
 
     const params = new URLSearchParams(location.search);
@@ -46,7 +46,7 @@ function renderPin(pin) {
     }
 
     button.href = pinUrl.pathname + pinUrl.search;
-  
+
     button.dataset.pinId = pin.id;
     button.setAttribute('aria-label', `Open pin: ${pin.title}`);
     const image = document.createElement('img');
@@ -84,43 +84,43 @@ async function loadPins() {
     loadMore.disabled = true;
     status.textContent = "Loading...";
 
-  try {
-    const url = new URL(feedPath, location.origin);
+    try {
+        const url = new URL(feedPath, location.origin);
 
-    if (cursor) {
-      url.searchParams.set("before", cursor);
+        if (cursor) {
+            url.searchParams.set("before", cursor);
+        }
+
+        const response = await fetch(url, {
+            signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Cant load pins");
+        }
+
+        if (controller.signal.aborted) return;
+        if (data.collection) {
+            $("heading").textContent = data.collection.name;
+        }
+
+        grid.append(...data.pins.map(renderPin));
+        cursor = data.next_cursor;
+
+        loadMore.hidden = !cursor;
+        status.textContent = grid.childElementCount ? "" : "No pins yet";
+    } catch (error) {
+        if (!controller.signal.aborted) {
+            status.textContent = error.message;
+            loadMore.hidden = false;
+        }
+    } finally {
+        if (feedController === controller) {
+            feedController = null;
+            loadMore.disabled = false;
+        }
     }
-
-    const response = await fetch(url, {
-        signal: controller.signal,
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Cant load pins");
-    }
-
-    if (controller.signal.aborted) return;
-    if (data.collection) {
-        $("heading").textContent = data.collection.name;
-    }
-
-    grid.append(...data.pins.map(renderPin));
-    cursor = data.next_cursor;
-
-    loadMore.hidden = !cursor;
-    status.textContent = grid.childElementCount ? "" : "No pins yet";
-  } catch (error) {
-    if (!controller.signal.aborted) {
-        status.textContent = error.message;
-        loadMore.hidden = false;
-    }
-  } finally {
-    if (feedController === controller) {
-        feedController = null;
-        loadMore.disabled = false;
-    }
-  }
 }
 
 let detailController = null;

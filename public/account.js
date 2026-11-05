@@ -24,14 +24,14 @@
         try {
             const usage = await api("me/usage");
             if (version !== usageVersion) return;
-            
+
             const used = (usage.upload_bytes / 1024 / 1024).toFixed(1);
             const limit = (usage.upload_limit_bytes / 1024 / 1024).toFixed(0);
 
-            display.textContent = 
-            `${usage.pins} / ${usage.pin_limit} pins created`
-            + ` (${usage.pins_remaining} remaining)\n`
-            + `${used} / ${limit} MB uploaded`;
+            display.textContent =
+                `${usage.pins} / ${usage.pin_limit} pins created`
+                + ` (${usage.pins_remaining} remaining)\n`
+                + `${used} / ${limit} MB uploaded`;
         } catch (error) {
             if (version === usageVersion) {
                 display.textContent = "Can't load usage";
@@ -97,7 +97,7 @@
         toggle.textContent = registering
             ? "Use existing account"
             : "Create account";
-        
+
         status.textContent = "";
     });
 
