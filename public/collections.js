@@ -88,6 +88,9 @@
     const remove = document.createElement("button");
     const sharing = document.createElement("button");
     sharing.type = "button";
+    const share = document.createElement("button");
+    share.type = "button";
+    share.textContent= "Share";
     
     link.href = `/?collection=${encodeURIComponent(collection.id)}`;
     preview.className = "collection-preview";
@@ -117,10 +120,22 @@
       preview.classList.add("empty");
     }
 
+    share.addEventListener("click", async () => {
+      if (collection.visibility !== "public") return;
+
+      try {
+        await navigation.clipboard.write(link.href);
+        status.textContent = "Collection link copied";
+      } catch {
+        window.prompt("Copy this collection link:", link.href);
+      }
+    });
+
     function renderSharing() {
       sharing.textContent = collection.visibility === "public"
         ? "Make private"
         : "Make public";
+      share.hidden = collection.visibility !== "public";
     }
   
     renderSharing();
@@ -148,7 +163,7 @@
     remove.className = "red";
 
     controls.className = "collection-controls";
-    controls.append(rename, " ", sharing, " ", remove);
+    controls.append(rename, " ", sharing, " ", share, " ", remove);
     item.append(link, controls);
 
     async function update(method, data) {
