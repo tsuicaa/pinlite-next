@@ -37,7 +37,7 @@
                 <h2 class="title"><img src="static/img/favicon.png" />PinLite 2.0 <sup>(beta)</sup></h2>
             </a>
             <div class="header-nav">
-                <a href="/?view=my-pins"></a><button type="button" id="saved-pins" title="My pins"><i class="icon pushpin"></i></button>
+                <a href="/?view=my-pins"><button type="button" id="saved-pins" title="My pins"><i class="icon pushpin"></i></button></a>
                 <a href="/?view=collections"><button type="button" id="saved-collections" title="My collections"><i class="icon collections"></i></button></a>
                 <button id="settings" type="button"><i class="icon settings"></i></button>
                 <button type="button" id="account-button"><i class="icon user"></i></button>
@@ -249,6 +249,7 @@
                 <button type="submit">Preview board</button>
 
                 <p id="pinterest-preview-status" role="status"></p>
+                <progress id="pinterest-import-progress" hidden></progress>
 
                 <div id="pinterest-preview-result" hidden>
                     <hr>
@@ -391,8 +392,8 @@
     </main>
     <hr>
 
-    <button id="create-pin-open" class="red" type="button" hidden>
-        <i class="icon pushpin"></i> Create pin
+    <button id="create-pin-open" class="teal" type="button" hidden>
+        <i class="icon pushpin-white"></i> Create pin
     </button>
     <footer>
         <small>Made with spite and hatred by <a href="https://x.com/tsuicaa" target="_blank">tsu ツ</a>.</small>

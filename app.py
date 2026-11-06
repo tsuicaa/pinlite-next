@@ -2,7 +2,7 @@ import os
 from urllib.parse import quote, urlsplit
 from datetime import timedelta, datetime, timezone
 
-from flask import Flask, jsonify, request, session as login_session
+from flask import Flask, jsonify, request, session as login_session, Response, stream_with_context
 from sqlalchemy import delete, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
@@ -17,12 +17,12 @@ from storage import image_url, put_image, delete_images
 
 import click
 
-from quotas import check_quota, QuotaExceeded, account_usage, check_quota, PIN_LIMIT
+from quotas import check_quota, QuotaExceeded, account_usage, check_quota, PIN_LIMIT, UPLOAD_LIMIT
 from limits import check_limit
 
 from tags import get_tags, normalize_tags, replace_tags
 
-from pinterest_boards import BoardPreviewError, BoardURLError, preview_board, board_path, board_pin_page
+from pinterest_boards import BoardPreviewError, BoardURLError, BoardImageError, prepare_board_image, preview_board, board_path, board_pin_page
 
 from hashlib import sha256
 
@@ -759,91 +759,7 @@ def delete_collection(collection_id):
 
 @app.post("/api/pins")
 def create_pin():
-    user_id = login_session.get("user_id")
-
-    if user_id is None:
-        return jsonify(error="Sign in first"), 401
-
-    data = request.get_json()
-
-    if not isinstance(data, dict):
-        return jsonify(error="Expected JSON object"), 400
-
-    try:
-        tags = normalize_tags(data.get("tags", []))
-    except ValueError as error:
-        return jsonify(error=str(error)), 400
-
-    title = data.get("title")
-    image_url = data.get("image_url")
-    visibility = data.get("visibility", "private")
-
-    if not isinstance(title, str) or not 1 <= len(title.strip()) <= 300:
-        return jsonify(error="Title must be 1-300 characters"), 400
-
-    if not isinstance(image_url, str) or not 1 <= len(image_url) <= 4096:
-        return jsonify(error="Enter image URL"), 400
-
-    image_url = image_url.strip()
-
-    try:
-        parsed = urlsplit(image_url)
-        valid_url = (
-            parsed.scheme in {"http", "https"}
-            and bool(parsed.hostname)
-            and parsed.username is None
-            and parsed.password is None
-            and not any(char.isspace() for char in image_url)
-        )
-    except ValueError:
-        valid_url = False
-
-    if not valid_url:
-        return jsonify(error="Enter a valid image URL"), 400
-
-    if visibility not in ("public", "private"):
-        return jsonify(error="Invalid visibility"), 400
-
-    with Session.begin() as db:
-        try:
-            check_quota(db, user_id)
-        except QuotaExceeded as error:
-            return jsonify(error=str(error)), 403
-        
-        try:
-            collection_id = selected_collection(
-                db, data.get("collection_id"), user_id
-            )
-        except ValueError as error:
-            return jsonify(error=str(error)), 400
-        
-        media = Media(
-            storage_kind="external",
-            external_url=image_url,
-        )
-        db.add(media)
-        db.flush()
-
-        pin = Pin(
-            creator_id=user_id,
-            media_id=media.id,
-            title=title.strip(),
-            visibility=visibility
-        )
-        db.add(pin)
-        db.flush()
-
-        if collection_id is not None:
-            db.add(CollectionPin(
-                collection_id=collection_id,
-                pin_id=pin.id,
-            ))
-
-        replace_tags(db, pin.id, tags)
-        result = serialize_pin(pin, media)
-        result["tags"] = tags
-
-    return jsonify(pin=result), 201
+    return jsonify(error="Create pins through the image upload endpoint."), 410
 
 @app.get("/api/me/pins")
 def my_pins():
@@ -1334,129 +1250,182 @@ def import_pinterest_section():
             quota_reached=False,
         )
 
-    added = reused = linked = skipped_in_sections = 0
-    quota_reached = False
+    def stream_import():
+        added = reused = linked = skipped_in_sections = failed_images = 0
+        quota_reached = False
+        failed_images = 0
+        written_keys = []
 
-    with Session.begin() as db:
-        account_id = db.scalar(
-            select(User.id).where(User.id == user_id).with_for_update()
-        )
-        if account_id is None:
-            return jsonify(error="Account not found"), 401
-
-        remaining = max(0, PIN_LIMIT - account_usage(db, user_id)["pins"])
-
-        def get_collection(key, name, parent_id=None):
-            collection = db.scalar(
-                select(Collection).where(
-                    Collection.owner_id == user_id,
-                    Collection.import_key == key,
+        try:
+            with Session.begin() as db:
+                account_id = db.scalar(
+                    select(User.id).where(User.id == user_id).with_for_update()
                 )
-            )
-            if collection is None:
-                collection = Collection(
-                    owner_id=user_id,
-                    parent_id=parent_id,
-                    name=str(name)[:200],
-                    visibility="private",
-                    import_key=key,
-                )
-                db.add(collection)
-                db.flush()
-            return collection
+                if account_id is None:
+                    yield json.dumps({"error": "Account not found."}) + "\n"
+                    return
 
-        board_key = f"pinterest:board:{board['id']}"
-        parent = get_collection(board_key, board["name"])
-        target = parent
+                usage = account_usage(db, user_id)
+                remaining = usage["pins_remaining"]
+                remaining_bytes = max(0, UPLOAD_LIMIT - usage["upload_bytes"])
 
-        if section is not None:
-            target = get_collection(
-                f"{board_key}:section:{section_id}",
-                section["name"],
-                parent.id,
-            )
-
-        for item in page["pins"]:
-            asset = urlsplit(item["image_url"]).path.split("/", 2)[-1]
-            digest = sha256(asset.encode()).hexdigest()
-            pin_key = f"{board_key}:image:{digest}"
-
-            pin = db.scalar(
-                select(Pin).where(
-                    Pin.creator_id == user_id,
-                    Pin.import_key == pin_key,
-                )
-            )
-
-            if section is None and pin is not None:
-                in_section = db.scalar(
-                    select(CollectionPin.pin_id)
-                    .join(Collection, Collection.id == CollectionPin.collection_id)
-                    .where(
-                        Collection.parent_id == parent.id,
-                        CollectionPin.pin_id == pin.id,
+                def get_collection(key, name, parent_id=None):
+                    collection = db.scalar(
+                        select(Collection).where(
+                            Collection.owner_id == user_id,
+                            Collection.import_key == key,
+                        )
                     )
-                    .limit(1)
-                )
+                    if collection is None:
+                        collection = Collection(
+                            owner_id=user_id,
+                            parent_id=parent_id,
+                            name=str(name)[:200],
+                            visibility="private",
+                            import_key=key,
+                        )
+                        db.add(collection)
+                        db.flush()
+                    return collection
 
-                if in_section is not None:
-                    skipped_in_sections += 1
-                    continue
+                board_key = f"pinterest:board:{board['id']}"
+                parent = get_collection(board_key, board["name"])
+                target = parent
 
-            if pin is None:
-                if remaining == 0:
-                    quota_reached = True
-                    break
+                if section is not None:
+                    target = get_collection(
+                        f"{board_key}:section:{section_id}",
+                        section["name"],
+                        parent.id,
+                    )
 
-                media = Media(
-                    storage_kind="external",
-                    external_url=item["image_url"],
-                )
-                db.add(media)
-                db.flush()
+                for item in page["pins"]:
+                    asset = urlsplit(item["image_url"]).path.split("/", 2)[-1]
+                    digest = sha256(asset.encode()).hexdigest()
+                    pin_key = f"{board_key}:image:{digest}"
 
-                pin = Pin(
-                    creator_id=user_id,
-                    media_id=media.id,
-                    title=item["title"],
-                    description=item["description"],
-                    source_url=item["source_url"],
-                    visibility=pin_visibility,
-                    import_key=pin_key,
-                )
-                db.add(pin)
-                db.flush()
+                    pin = db.scalar(
+                        select(Pin).where(
+                            Pin.creator_id == user_id,
+                            Pin.import_key == pin_key,
+                        )
+                    )
 
-                if use_section_tags and section_tag:
-                    replace_tags(db, pin.id, [section_tag])
+                    if section is None and pin is not None:
+                        in_section = db.scalar(
+                            select(CollectionPin.pin_id)
+                            .join(Collection, Collection.id == CollectionPin.collection_id)
+                            .where(
+                                Collection.parent_id == parent.id,
+                                CollectionPin.pin_id == pin.id,
+                            )
+                            .limit(1)
+                        )
 
-                added += 1
-                remaining -= 1
-            else:
-                reused += 1
+                        if in_section is not None:
+                            skipped_in_sections += 1
+                            continue
 
-            membership = db.scalar(
-                insert(CollectionPin)
-                .values(collection_id=target.id, pin_id=pin.id)
-                .on_conflict_do_nothing(
-                    index_elements=["collection_id", "pin_id"]
-                )
-                .returning(CollectionPin.pin_id)
-            )
-            if membership is not None:
-                linked += 1
+                    if pin is None:
+                        if remaining == 0:
+                            quota_reached = True
+                            break
 
-        result = {
-            "collection_id": str(target.id),
-            "added": added,
-            "reused": reused,
-            "linked": linked,
-            "next_cursor": cursor if quota_reached else page["next_cursor"],
-            "quota_reached": quota_reached,
-            "skipped_in_sections": skipped_in_sections
-        }
+                        try:
+                            prepared = prepare_board_image(item["image_url"])
+                        except BoardImageError:
+                            failed_images += 1
+                            continue
 
-    return jsonify(result)
+                        image_size = len(prepared["image"])
+
+                        if image_size > remaining_bytes:
+                            quota_reached = True
+                            break
+
+                        identifier = uuid4().hex
+                        image_key = f"images/{identifier}.webp"
+                        thumbnail_key = f"thumbnails/{identifier}.webp"
+                        written_keys.extend([image_key, thumbnail_key])
+
+                        put_image(image_key, prepared["image"])
+                        put_image(thumbnail_key, prepared["thumbnail"])
+
+                        media = Media(
+                            storage_kind="hosted",
+                            object_key=image_key,
+                            thumbnail_key=thumbnail_key,
+                            mime_type=prepared["mime_type"],
+                            width=prepared["width"],
+                            height=prepared["height"],
+                            byte_size=image_size,
+                        )
+                        db.add(media)
+                        db.flush()
+
+                        remaining_bytes -= image_size
+
+                        pin = Pin(
+                            creator_id=user_id,
+                            media_id=media.id,
+                            title=item["title"],
+                            description=item["description"],
+                            source_url=item["source_url"],
+                            visibility=pin_visibility,
+                            import_key=pin_key,
+                        )
+                        db.add(pin)
+                        db.flush()
+
+                        if use_section_tags and section_tag:
+                            replace_tags(db, pin.id, [section_tag])
+
+                        added += 1
+                        remaining -= 1
+                        yield json.dumps({"uploaded": added}) + "\n"
+                    else:
+                        reused += 1
+
+                    membership = db.scalar(
+                        insert(CollectionPin)
+                        .values(collection_id=target.id, pin_id=pin.id)
+                        .on_conflict_do_nothing(
+                            index_elements=["collection_id", "pin_id"]
+                        )
+                        .returning(CollectionPin.pin_id)
+                    )
+                    if membership is not None:
+                        linked += 1
+
+                result = {
+                    "collection_id": str(target.id),
+                    "added": added,
+                    "reused": reused,
+                    "linked": linked,
+                    "next_cursor": cursor if quota_reached else page["next_cursor"],
+                    "quota_reached": quota_reached,
+                    "skipped_in_sections": skipped_in_sections,
+                    "failed_images": failed_images
+                }
+        except (Exception, GeneratorExit) as error:
+            try:
+                delete_images(written_keys)
+            except Exception:
+                app.logger.exception("Can't clean up failed Pinterest import")
+            if isinstance(error, GeneratorExit):
+                raise
+
+            app.logger.exception("Pinterest import failed")
+            yield json.dumps({"error": "Can't save these pins"}) + "\n"
+            return
+    
+        yield json.dumps({"result": result}) + "\n"
+
+    return Response(
+        stream_with_context(stream_import()),
+        mimetype="application/x-ndjson",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-store"},
+    )
 
 
 REPORT_REASONS = {

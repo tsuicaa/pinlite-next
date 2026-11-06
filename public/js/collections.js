@@ -270,7 +270,7 @@
       : "";
 
     if (confirm(
-      `Delete "${collection.name}"${children}? The pins themselves will be kept.`
+      `Delete "${collection.name}"${children}? The pins will be kept.`
     )) {
       update("DELETE", {});
     }

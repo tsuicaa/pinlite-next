@@ -20,6 +20,8 @@
         if (!stop.hidden) event.preventDefault();
     });
 
+    const progress = get("pinterest-import-progress");
+
     document.addEventListener("account-change", event => {
         request?.abort();
         request = null;
@@ -33,9 +35,43 @@
         stop.hidden = true;
         open.hidden = !event.detail;    
         close.disabled = false;
+        progress.hidden = true;
 
         if (!event.detail) dialog.close();
     });
+
+    async function readImportResult(response, onProgress) {
+        if (!response.headers.get("Content-Type")?.includes("application/x-ndjson")) {
+            return response.json();
+        }
+
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = "";
+
+        try {
+            while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += value;
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line) continue;
+                const message = JSON.parse(line);
+
+                if (message.error) throw new Error(message.error);
+                if (message.result) return message.result;
+                if (typeof message.uploaded === "number") onProgress(message.uploaded);
+            }
+            }
+
+            throw new Error("The import ended before the server confirmed the save");
+        } finally {
+            reader.releaseLock();
+        }
+    }
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -43,6 +79,8 @@
 
         const controller = new AbortController();
         request = controller;
+        progress.removeAttribute("value");
+        progress.hidden = false;
         submit.disabled = true;
         result.hidden = true;
         status.textContent = "Checking Pinterest...";
@@ -89,6 +127,7 @@
             if (request === controller) {
                 request = null;
                 submit.disabled = false;
+                progress.hidden = true;
             }
         }
     });
@@ -103,8 +142,23 @@
         if (!preview || request) return;
 
         const board = preview;
+        const total = Number(board.reported_pin_count);
+        const hasTotal = Number.isSafeInteger(total) && total > 0;
+
+        if (hasTotal) {
+            progress.max = total;
+            progress.value = 0;
+        } else {
+            progress.removeAttribute("value");
+        }
+
+        function updateProgress(count) {
+            if (hasTotal) progress.value = Math.min(count, total);
+        }
+
         const controller = new AbortController();
         request = controller;
+        progress.hidden = false;
         stopping = false;
 
         const options = {
@@ -122,6 +176,7 @@
 
         let added = 0;
         let linked = 0;
+        let failedImages = 0;
         let reason = "Import pass finished";
 
         submit.disabled = true;
@@ -139,7 +194,7 @@
                     if (stopping || controller.signal.aborted) break importFeeds;
 
                     seen.add(cursor);
-                    status.textContent = `Importing ${feed.name}… ${added} new pins so far.`;
+                    status.textContent = `Importing ${feed.name}... ${added} pins saved`;
 
                     const response = await fetch("/api/import/pinterest/page", {
                         method: "POST",
@@ -161,17 +216,26 @@
                         continue;
                     }
 
-                    const page = await response.json();
+                    const page = await readImportResult(response, uploaded => {
+                    if (request !== controller || stopping) return;
+
+                    updateProgress(added + uploaded);
+
+                    status.textContent =
+                        `Importing ${feed.name}... ${added} pins saved | ${uploaded} images uploaded`;
+                    });
 
                     if (!response.ok) {
                         throw new Error(page.error || "Could not import this page");
                     }
 
                     added += page.added;
+                    updateProgress(added);
                     linked += page.linked;
+                    failedImages += page.failed_images ?? 0;
 
                     if (page.quota_reached) {
-                        reason = "Pin allowance reached.";
+                        reason = "Pin or storage allowance reached";
                         break importFeeds;
                     }
 
@@ -179,13 +243,13 @@
                     if (!cursor) break;
                     
                     if (seen.has(cursor)) {
-                        reason = `Pinterest repeated a page in ${feed.name}.`;
+                        reason = `Pinterest repeated a page in ${feed.name}`;
                         break importFeeds;
                     }
                 } 
             }
 
-            if (stopping) reason = "Import stopped.";
+            if (stopping) reason = "Import stopped";
         } catch (error) {
             reason = error.message;
         } finally {
@@ -194,15 +258,17 @@
                     ? " Only the previewed sections were processed"
                     : "";
 
-                status.textContent =
-                    `${reason} Created ${added} pins and added ${linked} collection memberships`
-                    + sectionNote
-                    + " Pinterest may return only part of a board. Refresh to see your collections.";
+                status.innerHTML =
+                    `<p><b>${reason}</b></p>`
+                    + `<p>Created <b>${added} pins</b> and added <b>${linked} collection memberships</b></p>`
+                    + `<p><small>${sectionNote} (Pinterest may return only part of a board. Refresh to see your collections)</small></p>`
+                    + `<p>${failedImages} images could not be saved</p>`;
 
                 request = null;
                 submit.disabled = false;
                 start.disabled = false;
                 stop.hidden = true;
+                progress.hidden = true;
             }
         }
     });

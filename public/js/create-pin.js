@@ -205,6 +205,55 @@
         });
     }
 
+    async function downloadImage(value) {
+        let url;
+        try {
+            url = new URL(value);
+        } catch {
+            throw new Error("Enter a direct HTTPS image URL");
+        }
+
+        if (url.protocol !== "https:" || url.username || url.password) {
+            throw new Error("Enter a direct HTTPS image URL");
+        }
+
+        let response;
+        try {
+            response = await fetch(url, {
+                credentials: "omit",
+                redirect: "error",
+                signal: AbortSignal.timeout(20_000),
+            });
+        } catch {
+            throw new Error("Can't download image. Save it and upload the file instead.");
+        }
+
+        if (!response.ok || !response.body) {
+            throw new Error("Can't download image. Try uploading the file instead.");
+        }
+
+        const maxBytes = 10 * 1024 * 1024;
+        const reader = response.body.getReader();
+        const chunks = [];
+        let size = 0;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            size += value.byteLength;
+            if (size > maxBytes) {
+                await reader.cancel();
+                throw new Error("Maximum image size is 10 MB.");
+            }
+
+            chunks.push(value);
+        }
+
+        const type = (response.headers.get("Content-Type") || "").split(";")[0];
+        return new File(chunks, "remote-image", { type });
+    }
+
     form.addEventListener("submit", async event => {
         event.preventDefault();
         if (creating) return;
@@ -233,75 +282,51 @@
         progress.removeAttribute("value");
 
         try {
-            let result;
+            if (!uploading) status.textContent = "Downloading image…";
 
-            if (uploading) {
-                status.textContent = "Reticulating Splines...";
+            const sourceFile = uploading ? selectedFile : await downloadImage(externalUrl);
+            if (version !== accountVersion) return;
+            status.textContent = "Reticulating Splines...";
 
-                const prepared = await convertImage(selectedFile);
-                if (version !== accountVersion) return;
-
-                if (prepared.size > 10 * 1024 * 1024) {
-                    throw new Error("Maximum image size is 10 MB");
-                }
-
-                const body = new FormData();
-                body.append("image", prepared);
-                body.append("title", title);
-                body.append("visibility", visibility);
-                body.append("collection_id", collectionId);
-                body.append("tags", tags.join(","));
-
-                status.textContent = "Uploading...";
-
-                result = await uploadImage(
-                    body,
-                    percent => {
-                        if (version !== accountVersion) return;
-
-                        if (percent === null) {
-                            progress.removeAttribute("value");
-                            status.textContent = "Uploading...";
-                        } else {
-                            progress.value = percent;
-                            status.textContent = `Uploading: ${percent}%`;
-                        }
-                    },
-                    () => {
-                        if (version !== accountVersion) return;
-
-                        progress.removeAttribute("value");
-                        status.textContent = "Finishing...";
-                    }
-                );
-            } else {
-                status.textContent = "Creating...";
-
-                const response = await fetch("/api/pins", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title,
-                        image_url: externalUrl,
-                        visibility,
-                        collection_id: collectionId,
-                        tags,
-                    }),
-                });
-
-                if (!response.headers.get("Content-Type")?.includes("application/json")) {
-                    throw new Error("Can't create pin");
-                }
-
-                result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || "Can't create pin");
-                }
-            }
-
+            const prepared = await convertImage(sourceFile);
             if (version !== accountVersion) return;
 
+            if (prepared.size > 10 * 1024 * 1024) {
+                throw new Error("Maximum image size is 10 MB");
+            }
+
+            const body = new FormData();
+            body.append("image", prepared);
+            body.append("title", title);
+            body.append("visibility", visibility);
+            body.append("collection_id", collectionId);
+            body.append("tags", tags.join(","));
+
+            status.textContent = "Uploading...";
+
+            const result = await uploadImage(
+                body,
+                percent => {
+                    if (version !== accountVersion) return;
+
+                    if (percent === null) {
+                        progress.removeAttribute("value");
+                        status.textContent = "Uploading...";
+                    } else {
+                        progress.value = percent;
+                        status.textContent = `Uploading: ${percent}%`;
+                    }
+                },
+                () => {
+                    if (version !== accountVersion) return;
+
+                    progress.removeAttribute("value");
+                    status.textContent = "Finishing...";
+                }
+            );
+            
+            if (version !== accountVersion) return;
+            
             location.href = `/?view=my-pins&pin=${encodeURIComponent(result.pin.id)}`;
         } catch (error) {
             if (version === accountVersion) {

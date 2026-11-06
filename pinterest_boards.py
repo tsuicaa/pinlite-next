@@ -3,6 +3,7 @@ import re
 import time
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+from images import prepare_image
 
 
 BASE = "https://www.pinterest.com"
@@ -15,10 +16,31 @@ class BoardURLError(ValueError):
 class BoardPreviewError(Exception):
     pass
 
+class BoardImageError(Exception):
+    pass
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
+
+
+def prepare_board_image(image_url):
+    try:
+        parsed = urlsplit(image_url)
+
+        if parsed.scheme != "https" or parsed.netloc.lower() != "i.pinimg.com":
+            raise ValueError("Invalid Pinterest image host")
+
+        request = Request(image_url, headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "image/*",
+        })
+
+        with build_opener(NoRedirect).open(request, timeout=6) as response:
+            return prepare_image(response)
+
+    except (OSError, ValueError) as error:
+        raise BoardImageError("Can't read the Pinterest image") from error
 
 
 def board_path(value):
@@ -31,7 +53,10 @@ def board_path(value):
         url = urlsplit(value if "://" in value else f"https://{value}")
         valid = (
             url.scheme == "https"
-            and url.netloc.lower() in ("pinterest.com", "www.pinterest.com")
+            and re.fullmatch(
+                r"(?:www\.|[a-z]{2}(?:-[a-z]{2})?\.)?pinterest\.com",
+                url.netloc.lower(),
+            ) is not None
         )
     except ValueError:
         valid = False

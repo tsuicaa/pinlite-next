@@ -278,11 +278,6 @@ $("back").addEventListener("click", () => {
     showRoute();
 });
 
-$("saved-pins").addEventListener("click", () => {
-    history.pushState(null, "", "/?view=collections");
-    showRoute();
-})
-
 $("search").addEventListener("submit", event => {
     event.preventDefault();
     const search = $("query").value.trim();

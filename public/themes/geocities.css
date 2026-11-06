@@ -107,6 +107,11 @@ button.green {
   color: #99ff99;
 }
 
+button.teal {
+  background: #00ffff;
+  color: #660033;
+}
+
 .info { background: none; }
 
 footer {

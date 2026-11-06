@@ -17,7 +17,7 @@ def prepare_image(file):
             if original.format not in {"JPEG", "PNG", "WEBP"}:
                 raise ValueError("Allowed formats are JPEG, PNG or WebP")
 
-            if original.width * original.height > MAX_BYTES:
+            if original.width * original.height > MAX_PIXELS:
                 raise ValueError("Image must be max 20 megapixels")
 
             if getattr(original, "is_animated", False):

@@ -123,6 +123,9 @@ dialog .panel {
 .icon.pushpin {
   background-image: url("img/pin.png");
 }
+.icon.pushpin-white {
+  background-image: url("img/pinwhite.png");
+}
 .icon.settings {
   background-image: url("img/settings.png");
 }
@@ -267,6 +270,10 @@ button.blue {
 
 button.green {
   background-color: #5bff6f;
+}
+
+button.teal {
+  background-color: #05bfa6;
 }
 
 button:disabled {
