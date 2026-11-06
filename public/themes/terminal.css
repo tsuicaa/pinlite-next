@@ -1,0 +1,52 @@
+:root { color-scheme: dark; }
+
+body,
+.panel,
+header {
+  background: #081008;
+  color: #a4e8a4;
+  font-family: "Courier New", monospace;
+}
+
+h1, h2, h3, h4, #query {
+  font-family: "Courier New", monospace;
+}
+
+a, .pin { color: #8cff8c; }
+a:visited { color: #72b872; }
+
+input, select, button {
+  background: #102010;
+  color: #a4e8a4;
+  border: 1px solid #568856;
+  font-family: inherit;
+}
+
+.collection-preview .empty-collection:after {
+  background-image: radial-gradient(#72b872 1px, transparent 1px), radial-gradient(#72b872 1px, transparent 1px);
+  background-color: #568856;
+}
+
+.panel,
+.pin,
+.detail-card,
+#feed-heading {
+  border: 1px solid #568856;
+  box-shadow: none;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #568856;
+}
+
+.pin p { border-top-color: #568856; }
+
+#detail-image {
+  border-top-color: #568856;
+  border-bottom-color: #568856;
+}
+
+.caution, button.red { background: #402018; }
+button.blue, button.green { background: #183018; }
+.info { background: none; }

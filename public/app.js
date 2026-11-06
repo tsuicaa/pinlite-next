@@ -21,6 +21,7 @@ function resetFeed() {
     $("heading").textContent = "";
     status.textContent = "";
     loadMore.hidden = true;
+    document.dispatchEvent(new CustomEvent("collection-feed", { detail: null }));
 }
 
 function renderPin(pin) {
@@ -103,6 +104,9 @@ async function loadPins() {
         if (controller.signal.aborted) return;
         if (data.collection) {
             $("heading").textContent = data.collection.name;
+        }
+        if (data.children) {
+            document.dispatchEvent(new CustomEvent("collection-feed", { detail: data }));
         }
 
         grid.append(...data.pins.map(renderPin));

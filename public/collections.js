@@ -13,6 +13,11 @@
   const folders = get("pin-folder");
   const saveStatus = get("pin-save-status");
 
+  const subcollections = get("subcollections-list");
+  const breadcrumb = get("collection-breadcrumb");
+  let ownedCollections = [];
+
+
   let currentPin = null;
   let saving = false;
 
@@ -91,11 +96,13 @@
     sharing.type = "button";
     const share = document.createElement("button");
     share.type = "button";
-    share.textContent= "Share";
-    
+    share.title = "Share";
+    share.innerHTML= "<i class='icon share'></i>";
+    const visibilityIcon = document.createElement("div");
+    visibilityIcon.className = "panel inset visibility-icon";
+
     link.href = `/?collection=${encodeURIComponent(collection.id)}`;
     preview.className = "collection-preview";
-    preview.setAttribute("aria-hidden", "true");
  
     if (collection.previews?.length >= 4) {
       for (let index = 0; index < 4; index++) {
@@ -125,7 +132,7 @@
       if (collection.visibility !== "public") return;
 
       try {
-        await navigation.clipboard.write(link.href);
+        await navigator.clipboard.writeText(link.href);
         status.textContent = "Collection link copied";
       } catch {
         window.prompt("Copy this collection link:", link.href);
@@ -133,10 +140,16 @@
     });
 
     function renderSharing() {
-      sharing.textContent = collection.visibility === "public"
+      sharing.innerHTML = collection.visibility === "public"
+        ? "<i class='icon private'></i>"
+        : "<i class='icon public'></i>";
+      sharing.title = collection.visibility === "public"
         ? "Make private"
         : "Make public";
       share.hidden = collection.visibility !== "public";
+      visibilityIcon.innerHTML = collection.visibility == "public"
+        ? "<i class='icon public'></i>"
+        : "<i class='icon private'></i>";
     }
   
     renderSharing();
@@ -154,18 +167,25 @@
     });
 
     title.textContent = collection.name;
-    link.append(preview, title);
+    const hr = document.createElement("hr");
+    link.append(preview, hr, title);
 
     rename.type = "button";
-    rename.textContent = "Rename";
+    rename.innerHTML = "<i class='icon rename'></i>";
+    rename.title = "Rename"
 
     remove.type = "button";
-    remove.textContent = "Delete";
+    remove.innerHTML = "<i class='icon delete'></i>";
+    remove.title = "Delete"
     remove.className = "red";
 
     controls.className = "collection-controls";
     controls.append(rename, " ", sharing, " ", share, " ", remove);
-    item.append(link, controls);
+    item.append(visibilityIcon, link);
+
+    if (collection.can_manage === false) return item;
+
+    item.append(controls);
 
     async function update(method, data) {
       const version = accountVersion;
@@ -238,8 +258,8 @@
   });
 
   remove.addEventListener("click", () => {
-    const childCount = [...list.querySelectorAll("[data-parent-id]")]
-      .filter(card => card.dataset.parentId === collection.id).length;
+    const childCount = ownedCollections
+      .filter(child => child.parent_id === collection.id).length;
 
     const children = childCount
       ? ` and ${childCount} sub-collection${childCount === 1 ? "" : "s"}`
@@ -274,6 +294,7 @@
   document.addEventListener("account-change", async event => {
     const version = ++accountVersion;
 
+    ownedCollections = [];
     folders.replaceChildren();
     saveStatus.textContent = "";
     updateSaveControls();
@@ -291,58 +312,63 @@
 
     status.textContent = "Loading...";
 
-    function renderCollectionList(collections) {
-      const cards = new Map(
-        collections.map(collection => [collection.id, renderCollection(collection)])
-      );
-
-      const roots = [];
-      const childLists = new Map();
-
-      for (const collection of collections) {
-        const card = cards.get(collection.id);
-        const parent = cards.get(collection.parent_id);
-
-        if (!parent) {
-          roots.push(card);
-          continue;
-        }
-
-        let children = childLists.get(collection.parent_id);
-
-        if (!children) {
-          children = document.createElement("ul");
-          children.className = "collection-children";
-          children.setAttribute("aria-label", "Sub-collections");
-          parent.append(children);
-          childLists.set(collection.parent_id, children);
-        }
-
-        children.append(card);
-      }
-
-      list.replaceChildren(...roots);
-    }
-
     try {
       const result = await api();
-
       if (version !== accountVersion) return;
 
-      renderCollectionList(result.collections);
-      folders.replaceChildren(...result.collections.map(collection =>
-        new Option(collection.name, collection.id)
-      ));
-      updateSaveControls();
+      ownedCollections = result.collections;
 
-      status.textContent = result.collections.length
-        ? ""
-        : "No collections yet";
+      const roots = ownedCollections.filter(
+        collection => collection.parent_id === null
+      );
+      list.replaceChildren(...roots.map(renderCollection));
+
+      const byId = new Map(
+        ownedCollections.map(collection => [collection.id, collection])
+      );
+      folders.replaceChildren(...ownedCollections.map(collection => {
+        const parent = byId.get(collection.parent_id);
+        const label = parent ? `${parent.name} / ${collection.name}` : collection.name;
+        return new Option(label, collection.id);
+      }));
+
+      updateSaveControls();
+      status.textContent = roots.length ? "" : "No collections yet";
     } catch (error) {
       if (version === accountVersion) {
         status.textContent = error.message;
       }
     }
+  });
+
+  document.addEventListener("collection-feed", event => {
+    const data = event.detail;
+
+    subcollections.replaceChildren();
+    breadcrumb.replaceChildren();
+    subcollections.hidden = !data?.children.length;
+    breadcrumb.hidden = !data;
+    if (!data) return;
+
+    function addLink(label, href) {
+      const link = document.createElement("a");
+      link.textContent = label;
+      link.href = href;
+      breadcrumb.append(link, " / ");
+    }
+
+    if (data.collection.can_manage) {
+      addLink("Your collections", "/?view=collections");
+    } else {
+      addLink("Home", "/");
+    }
+
+    if (data.parent) {
+      addLink(data.parent.name, `/?collection=${encodeURIComponent(data.parent.id)}`);
+    }
+
+    breadcrumb.append(data.collection.name);
+    subcollections.append(...data.children.map(renderCollection));
   });
 
   form.addEventListener("submit", async event => {

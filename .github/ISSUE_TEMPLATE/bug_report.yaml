@@ -1,0 +1,35 @@
+name: Bug Report Form
+description: File a structured bug report
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Information
+      description: How can we reach you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Share step-by-step instructions on how to replicate the issue.
+      placeholder: |
+        1. Go to...
+        2. Click on...
+    validations:
+      required: true
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Validations
+      description: Before submitting, please verify the following options.
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate.
+          required: true

@@ -1,0 +1,115 @@
+:root { color-scheme: dark; }
+
+body {
+  background: url(../starbg.gif);
+  color: #ffff99;
+  font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
+}
+
+h1, h2, h3, h4, #query {
+  font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
+}
+
+header {
+  background: #000;
+  height: 67px;
+}
+
+
+.collection-preview .empty-collection:after {
+  background-image: radial-gradient(#110044 1px, transparent 1px), radial-gradient(#110044 1px, transparent 1px);
+  background-color: #000033;
+}
+
+h1 {
+  color: #ffff00;
+  text-shadow: 2px 2px #ff00ff;
+}
+
+h1 a { color: #ffff00; }
+
+h3 { color: #00ff99; }
+
+a, .pin { color: #00ffff; }
+a:visited { color: #ff99ff; }
+
+input, select, button {
+  background: #110044;
+  color: #ffff99;
+  border: 2px outset #cc99ff;
+  font-family: inherit;
+}
+
+input[type="text"] {
+  background: #000022;
+  border-style: inset;
+}
+
+.panel {
+  background: #000033;
+  border: 3px ridge #ff00ff;
+  box-shadow: 4px 4px #000;
+}
+
+.panel {
+  border: 1px dashed #00ffff;
+}
+
+.pin,
+.detail-card {
+  border: 1px dotted #cc99ff;
+}
+
+.pin p {
+  border-top: 1px dotted #cc99ff;
+}
+
+#feed-heading {
+  background: #220044;
+  color: #ffff00;
+  border: 2px ridge #ff00ff;
+}
+
+hr {
+  height: 3px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    #ff0000, #ffff00, #00ff00,
+    #00ffff, #0000ff, #ff00ff
+  );
+}
+
+#detail-image {
+  border-top-color: #cc99ff;
+  border-bottom-color: #cc99ff;
+}
+
+.caution {
+  background: #440022;
+  color: #ffff00;
+  border: 1px dashed #ff6699;
+}
+
+button.red {
+  background: #660033;
+  color: #fff;
+}
+
+button.blue {
+  background: #000066;
+  color: #00ffff;
+}
+
+button.green {
+  background: #004422;
+  color: #99ff99;
+}
+
+.info { background: none; }
+
+footer {
+  color: #ff99ff;
+  border-top: 1px dashed #00ffff;
+  padding-top: 12px;
+}

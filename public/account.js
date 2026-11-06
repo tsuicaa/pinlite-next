@@ -9,6 +9,12 @@
     const toggle = get("account-switch");
     const logout = get("account-logout");
     const status = get("account-status");
+    const settings = get("account-settings-dialog");
+    const settingsStatus = get("account-settings-status");
+    const profileForm = get("account-profile-form");
+    const passwordForm = get("account-password-form");
+    const profileName = get("profile-display-name");
+
 
     let registering = false;
 
@@ -19,22 +25,34 @@
 
         const version = ++usageVersion;
         const display = get("account-usage");
-        display.textContent = "Loading usage...";
+        const status = get("account-usage-status");
+
+        display.hidden = true;
+        status.textContent = "Loading usage…";
 
         try {
             const usage = await api("me/usage");
             if (version !== usageVersion) return;
 
-            const used = (usage.upload_bytes / 1024 / 1024).toFixed(1);
-            const limit = (usage.upload_limit_bytes / 1024 / 1024).toFixed(0);
+            const pins = get("account-pin-progress");
+            pins.max = Math.max(1, usage.pin_limit);
+            pins.value = usage.pins;
+            get("account-pin-usage").textContent =
+                `${usage.pins} / ${usage.pin_limit} pins (${usage.pins_remaining} remaining)`;
 
-            display.textContent =
-                `${usage.pins} / ${usage.pin_limit} pins created`
-                + ` (${usage.pins_remaining} remaining)\n`
-                + `${used} / ${limit} MB uploaded`;
-        } catch (error) {
+            const storage = get("account-storage-progress");
+            storage.max = Math.max(1, usage.upload_limit_bytes);
+            storage.value = usage.upload_bytes;
+
+            const mib = bytes => (bytes / 1024 ** 2).toFixed(1);
+            get("account-storage-usage").textContent =
+                `${mib(usage.upload_bytes)} / ${mib(usage.upload_limit_bytes)} MiB`;
+
+            status.textContent = "";
+            display.hidden = false;
+        } catch {
             if (version === usageVersion) {
-                display.textContent = "Can't load usage";
+                status.textContent = "Could not load usage.";
             }
         }
     }
@@ -43,7 +61,8 @@
         const loggedIn = Boolean(user);
 
         usageVersion++;
-        get("account-usage").textContent = "";
+        get("account-usage").hidden = true;
+        get("account-usage-status").textContent = "";
 
         form.hidden = loggedIn;
         get("account-actions").hidden = !loggedIn;
@@ -54,14 +73,11 @@
             detail: user,
         }));
 
-        if (!get("account").hidden) {
-            loadUsage();
-        }
     }
 
-    async function api(path, data) {
+    async function api(path, data, method = "POST") {
         const response = await fetch(`/api/${path}`, data === undefined ? {} : {
-            method: "POST",
+            method,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
@@ -78,10 +94,6 @@
     accountButton.addEventListener("click", () => {
         const panel = get("account");
         panel.hidden = !panel.hidden;
-
-        if (!panel.hidden) {
-            loadUsage();
-        }
     });
 
     toggle.addEventListener("click", () => {
@@ -139,6 +151,66 @@
             status.textContent = error.message;
         } finally {
             logout.disabled = false;
+        }
+    });
+
+    get("account-settings-open").addEventListener("click", () => {
+        profileName.value = get("account-display-name").textContent;
+        passwordForm.reset();
+        settingsStatus.textContent = "";
+        settings.showModal();
+        loadUsage();
+    });
+
+    settings.addEventListener("close", () => passwordForm.reset());
+
+    profileForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = profileForm.querySelector("button");
+        button.disabled = true;
+        settingsStatus.textContent = "";
+
+        try {
+            const { user } = await api("me/profile", {
+                display_name: profileName.value.trim(),
+            }, "PATCH");
+
+            get("account-display-name").textContent = user.display_name;
+            profileName.value = user.display_name;
+            settingsStatus.textContent = "Display name saved";
+        } catch (error) {
+            settingsStatus.textContent = error.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    passwordForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const newPassword = get("settings-new-password").value;
+
+        if (newPassword !== get("settings-confirm-password").value) {
+            settingsStatus.textContent = "New passwords don't match";
+            return;
+        }
+
+        const button = passwordForm.querySelector("button");
+        button.disabled = true;
+        settingsStatus.textContent = "";
+
+        try {
+            await api("me/password", {
+                current_password: get("settings-current-password").value,
+                new_password: newPassword,
+            });
+
+            passwordForm.reset();
+            settingsStatus.textContent = "Password changed";
+        } catch (error) {
+            settingsStatus.textContent = error.message;
+        } finally {
+            button.disabled = false;
         }
     });
 

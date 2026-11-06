@@ -1,0 +1,164 @@
+/*
+ * PinLite theme: My Theme
+ * Author: Your name
+ * Author URL: Your URL
+ *
+ * If possible, avoid loading large external assets. 
+ * Generally keep things lightweight, like using system fonts if possible.
+ */
+
+:root {
+  color-scheme: light;                  /* Use "dark" for a dark theme. */
+
+  --theme-background: #ffffff;
+  --theme-text: #222222;
+  --theme-link: #0000ee;
+  --theme-visited: #551a8b;
+
+  --theme-panel: #f0f0f0;
+  --theme-control: #eeeeee;
+  --theme-input: #ffffff;
+  --theme-border: #888888;
+
+  --theme-heading-background: #eeeeee;
+  --theme-heading-text: #222222;
+
+  --theme-caution-background: #fff0cc;
+  --theme-caution-text: #553300;
+
+  --theme-red: #ffcccc;
+  --theme-blue: #ccccff;
+  --theme-green: #ccffcc;
+  --theme-button-text: #222222;
+
+  --theme-font: "Times New Roman", Times, serif;
+}
+
+body {
+  background: var(--theme-background);
+  color: var(--theme-text);
+  font-family: var(--theme-font);
+}
+
+a,
+.pin {
+  color: var(--theme-link);
+}
+
+a:visited {
+  color: var(--theme-visited);
+}
+
+h1,
+h3 {
+  color: var(--theme-text);
+  text-shadow: none;
+}
+
+/* Settings */
+
+#settings-panel {
+  background: var(--theme-panel);
+  color: var(--theme-text);
+  border: 1px solid var(--theme-border);
+  box-shadow: none;
+}
+
+#settings-panel .panel {
+  border: 1px solid var(--theme-border);
+}
+
+/* Form controls */
+
+input,
+select,
+button {
+  background: var(--theme-control);
+  color: var(--theme-text);
+  border: 1px solid var(--theme-border);
+  border-radius: 0;
+  font-family: inherit;
+}
+
+input[type="text"] {
+  background: var(--theme-input);
+}
+
+input::placeholder {
+  color: var(--theme-text);
+  opacity: 0.6;
+}
+
+input::file-selector-button {
+  background: var(--theme-control);
+  color: var(--theme-text);
+  border: 1px solid var(--theme-border);
+  font-family: inherit;
+}
+
+button.red {
+  background: var(--theme-red);
+  color: var(--theme-button-text);
+}
+
+button.blue {
+  background: var(--theme-blue);
+  color: var(--theme-button-text);
+}
+
+button.green {
+  background: var(--theme-green);
+  color: var(--theme-button-text);
+}
+
+.info {
+  background: none;
+  border: none;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+/* Feed and pin details */
+
+.pin,
+.detail-card {
+  border: 1px solid var(--theme-border);
+  box-shadow: none;
+}
+
+.pin p {
+  border-top: 1px solid var(--theme-border);
+}
+
+#feed-heading {
+  background: var(--theme-heading-background);
+  color: var(--theme-heading-text);
+  border: 1px solid var(--theme-border);
+}
+
+#detail-image {
+  border-top-color: var(--theme-border);
+  border-bottom-color: var(--theme-border);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--theme-border);
+}
+
+.caution {
+  background: var(--theme-caution-background);
+  color: var(--theme-caution-text);
+}
+
+/* Keyboard navigation */
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--theme-link);
+  outline-offset: 2px;
+}

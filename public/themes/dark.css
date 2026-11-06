@@ -1,0 +1,72 @@
+:root {
+  color-scheme: dark;
+}
+
+body,
+.panel,
+header {
+  background: #222;
+  color: #eee;
+}
+
+a,
+.pin {
+  color: #9ac7ff;
+}
+
+a:visited {
+  color: #d0aaff;
+}
+
+.collection-preview .empty-collection:after {
+  background-image: radial-gradient(#504f4f 1px, transparent 1px), radial-gradient(#504f4f 1px, transparent 1px);
+  background-color: #333;
+}
+
+input,
+select,
+button {
+  background: #333;
+  color: #eee;
+}
+
+.panel,
+.pin,
+.detail-card,
+#feed-heading {
+  border-top-color: #666;
+  border-left-color: #666;
+  border-right-color: #111;
+  border-bottom-color: #111;
+}
+
+hr {
+  border-top-color: #111;
+  border-bottom-color: #666;
+}
+
+.pin p {
+  border-top-color: #666;
+}
+
+#detail-image {
+  border-top-color: #666;
+  border-bottom-color: #111;
+}
+
+.caution,
+button.red {
+  background: #803333;
+}
+
+button.blue {
+  background: #284c80;
+}
+
+button.green {
+  background: #285c35;
+}
+
+.info {
+  background: none;
+}

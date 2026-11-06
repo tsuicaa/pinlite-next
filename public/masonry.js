@@ -14,9 +14,13 @@ function setupMasonry(grid) {
     if (!width) return;
 
     const pins = [...grid.children].filter(node => node.matches('.pin'));
-    const columns = matchMedia('(max-width: 500px)').matches
-      ? 2
-      : Math.max(1, Math.floor((width + gapX) / (200 + gapX)));
+    const style = getComputedStyle(grid);
+    const cardTarget = parseFloat(style.getPropertyValue("--pin-card-width")) || 200;
+    const mobileColumns = parseInt(style.getPropertyValue("--pin-mobile-columns"), 10) || 2;
+
+    const columns = matchMedia("(max-width: 500px)").matches
+      ? mobileColumns
+      : Math.max(1, Math.floor((width + gapX) / (cardTarget + gapX)));
     const cardWidth = Math.max(
       1, (width - gapX * (columns - 1)) / columns
     );
@@ -80,5 +84,6 @@ function setupMasonry(grid) {
 
   new MutationObserver(syncPins).observe(grid, { childList: true });
   window.addEventListener('resize', schedule);
+  document.addEventListener("pin-size-change", schedule);
   syncPins();
 }

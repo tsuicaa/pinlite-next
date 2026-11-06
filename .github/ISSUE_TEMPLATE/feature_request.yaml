@@ -1,0 +1,62 @@
+name: Feature Request Form
+description: Suggest an idea or enhancement for PinLite.
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Thank you for your suggestion!
+        Please fill out this form as completely as possible to help us understand your idea.
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the problem or limitation is. (e.g., "I'm always frustrated when...")
+      placeholder: |
+        I am trying to accomplish X, but currently the system forces me to do Y, which takes too much time...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+      placeholder: |
+        Introduce a new configuration option or button that allows the user to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: Any alternative solutions or workarounds you have tried or considered.
+      placeholder: |
+        I tried using a third-party plugin, but it doesn't integrate natively...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Impact / Priority
+      description: How critical is this feature request to your workflow?
+      options:
+        - "Nice to have (Minor enhancement)"
+        - "Important (Would significantly improve daily workflow)"
+        - "Critical (Blocking core use cases)"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Code of Conduct & Duplication Check
+      options:
+        - label: I have searched existing issues and discussions to ensure this feature hasn't already been requested.
+          required: true
+        - label: I would be willing to submit a Pull Request to implement this feature myself if guided.
+          required: false

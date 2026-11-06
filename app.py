@@ -84,6 +84,27 @@ def selected_collection(db, value, user_id):
 
     return collection.id
 
+def collection_previews(db, collection_id, user_id):
+    query = (
+        select(Pin, Media)
+        .join(Media, Pin.media_id == Media.id)
+        .join(CollectionPin, CollectionPin.pin_id == Pin.id)
+        .join(Collection, Collection.id == CollectionPin.collection_id)
+        .where(
+            CollectionPin.collection_id == collection_id,
+            (Pin.visibility == "public")
+            | ((Collection.owner_id == user_id) & (Pin.creator_id == user_id)),
+        )
+        .order_by(func.random())
+        .limit(4)
+    )
+
+    return [
+        data["thumbnail"] or data["image"]
+        for pin, media in db.execute(query)
+        if (data := serialize_pin(pin, media))["image"]
+    ]
+
 @app.before_request
 def require_api_json():
     if not request.path.startswith("/api/"):
@@ -278,6 +299,61 @@ def current_user():
     login_session.clear()
     return jsonify(user=None)
 
+@app.patch("/api/me/profile")
+def update_profile():
+    user_id = login_session.get("user_id")
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+    name = data.get("display_name") if isinstance(data, dict) else None
+
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 32:
+        return jsonify(error="Display name must be 1–32 characters"), 400
+
+    with Session.begin() as db:
+        user = db.get(User, user_id)
+        if user is None:
+            return jsonify(error="Sign in first"), 401
+
+        user.display_name = name.strip()
+        result = {"id": str(user.id), "display_name": user.display_name}
+
+    return jsonify(user=result)
+
+
+@app.post("/api/me/password")
+def change_password():
+    user_id = login_session.get("user_id")
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify(error="Expected JSON object"), 400
+
+    current = data.get("current_password")
+    new = data.get("new_password")
+
+    if not isinstance(current, str) or not 8 <= len(current) <= 64:
+        return jsonify(error="Current password is incorrect"), 400
+
+    if not isinstance(new, str) or not 8 <= len(new) <= 64:
+        return jsonify(error="New password must be 8–64 characters"), 400
+
+    with Session.begin() as db:
+        user = db.get(User, user_id, with_for_update=True)
+        if user is None:
+            return jsonify(error="Sign in first"), 401
+
+        if not user.password_hash or not check_password_hash(user.password_hash, current):
+            return jsonify(error="Current password is incorrect"), 400
+
+        user.password_hash = generate_password_hash(new)
+
+    return jsonify(ok=True)
+
+
 @app.post("/api/login")
 def login():
     data = request.get_json()
@@ -354,26 +430,9 @@ def list_collections():
             for collection in db.scalars(query)
         ]
         for collection in collections:
-            preview_query = (
-                select(Pin, Media)
-                .join(Media, Pin.media_id == Media.id)
-                .join(CollectionPin, CollectionPin.pin_id == Pin.id)
-                .where(
-                    CollectionPin.collection_id == int(collection["id"]),
-                    (
-                        (Pin.visibility == "public")
-                        | (Pin.creator_id == user_id)
-                    ),
-                )
-                .order_by(func.random())
-                .limit(4)
+            collection["previews"] = collection_previews(
+                db, int(collection["id"]), user_id
             )
-
-            collection["previews"] = [
-                data["thumbnail"] or data["image"]
-                for pin, media in db.execute(preview_query)
-                if (data := serialize_pin(pin, media))["image"]
-            ]
 
     return jsonify(collections=collections)
 
@@ -519,6 +578,45 @@ def collection_pins(collection_id):
             "pins": pins,
             "next_cursor": pins[-1]["id"] if has_more else None,
         }
+
+        if before is None:
+            visible_collection = (
+                (Collection.owner_id == user_id)
+                | (Collection.visibility == "public")
+            )
+
+            parent = None
+            if collection.parent_id is not None:
+                parent = db.scalar(
+                    select(Collection).where(
+                        Collection.id == collection.parent_id,
+                        visible_collection,
+                    )
+                )
+
+            result["parent"] = (
+                {"id": str(parent.id), "name": parent.name}
+                if parent is not None else None
+            )
+            result["collection"]["can_manage"] = collection.owner_id == user_id
+
+            children = db.scalars(
+                select(Collection)
+                .where(Collection.parent_id == collection.id, visible_collection)
+                .order_by(Collection.name, Collection.id)
+            ).all()
+
+            result["children"] = [
+                {
+                    "id": str(child.id),
+                    "name": child.name,
+                    "visibility": child.visibility,
+                    "parent_id": str(collection.id),
+                    "can_manage": child.owner_id == user_id,
+                    "previews": collection_previews(db, child.id, user_id),
+                }
+                for child in children
+            ]
 
     response = jsonify(result)
     response.headers["Cache-Control"] = "private, no-store"
@@ -1021,6 +1119,7 @@ def limit_requests():
         "create_pin": ("account", 20, 60),
         "preview_pinterest_board": ("account", 4, 60),
         "import_pinterest_section": ("account", 4, 60),
+        "change_password": ("account", 5, 60),
     }
 
     rule = rules.get(request.endpoint)

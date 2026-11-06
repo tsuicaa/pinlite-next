@@ -1,0 +1,49 @@
+:root { color-scheme: light; }
+
+body,
+.panel,
+header {
+  background: #f1e7cc;
+  color: #352b20;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+a, .pin { color: #704020; }
+a:visited { color: #765477; }
+
+input, select, button {
+  background: #fff8e8;
+  color: #352b20;
+  border: 1px solid #9b896b;
+  font-family: inherit;
+}
+
+.collection-preview .empty-collection:after {
+  background-image: radial-gradient(#9b896b 1px, transparent 1px), radial-gradient(#9b896b 1px, transparent 1px);
+  background-color: #9b896b;
+}
+
+.panel,
+.pin,
+.detail-card,
+#feed-heading {
+  border: 1px solid #9b896b;
+  box-shadow: none;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #9b896b;
+}
+
+.pin p { border-top-color: #9b896b; }
+
+#detail-image {
+  border-top-color: #9b896b;
+  border-bottom-color: #9b896b;
+}
+
+.caution, button.red { background: #e9c4ac; }
+button.blue { background: #cbd9df; }
+button.green { background: #d1ddbd; }
+.info { background: none; }

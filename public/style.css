@@ -1,6 +1,20 @@
 body { color: #000; background: #C0C0C0; }
 [hidden] { display: none !important; }
 
+:root {
+  --pin-card-width: 200px;
+  --pin-mobile-columns: 2;
+}
+
+:root[data-pin-size="compact"] {
+  --pin-card-width: 160px;
+  --pin-mobile-columns: 3;
+}
+
+:root[data-pin-size="large"] {
+  --pin-card-width: 260px;
+  --pin-mobile-columns: 1;
+}
 
 * {
   box-sizing: border-box;
@@ -48,7 +62,6 @@ input {
   border-right-color: #000;
   border-bottom-color: #000;
   padding: 12px;
-  position: relative;
 }
 
 .panel:before {
@@ -65,6 +78,33 @@ input {
   pointer-events: none;
 }
 
+.panel.inset {
+  border: 1px solid #000;
+  border-top-color: #000;
+  border-left-color: #000;
+  border-right-color: #C3C3C3;
+  border-bottom-color: #C3C3C3;
+  padding: 12px;
+}
+
+.panel.inset:before {
+  content: "";
+  position: absolute;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  top: 0px; left: 0px;  
+  border: 1px solid #000;
+  border-top-color: #828282;
+  border-left-color: #828282;
+  border-right-color: #fff;
+  border-bottom-color: #fff;
+  pointer-events: none;
+}
+
+dialog .panel {
+  position: fixed;
+}
+
 .icon {
   display: inline-block; 
   width: 20px;
@@ -73,12 +113,8 @@ input {
   background-size: contain;
   background-position: center;
   background-color: transparent;
-  filter: saturate(1);
 }
 
-button:hover > .icon {
-  filter: saturate(1);
-}
 
 .icon.user {
   background-image: url("user.png");
@@ -100,6 +136,21 @@ button:hover > .icon {
 }
 .icon.save {
   background-image: url("save.png");
+}
+.icon.delete {
+  background-image: url("delete.png");
+}
+.icon.rename {
+  background-image: url("rename.png");
+}
+.icon.public {
+  background-image: url("public.png");
+}
+.icon.private {
+  background-image: url("private.png");
+}
+.icon.share {
+  background-image: url("share.png");
 }
 
 header {
@@ -140,14 +191,17 @@ header .title {
 
 #account {
   position: fixed;
-  width: 220px;
   z-index: 2;
   right: 0;
   top: 60px;
 }
 
-#account #account-form {
+#account h2 {
   margin: 0;
+}
+
+#account form {
+  margin: 12px;
 }
 
 .search-box {
@@ -406,13 +460,14 @@ button:disabled {
   border-left-color: #eee;
   border-right-color: #9A9A9A;
   border-bottom-color: #9A9A9A;
+  margin-bottom: 12px;
 }
 
 .links a { 
   margin-right: 1em; 
 }
 
-#collections-list {
+#collections-list, #subcollections-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
@@ -420,22 +475,34 @@ button:disabled {
   list-style: none;
 }
 
-#collections-list .collection-card {
-  position: static;
+#collections-list .collection-card, #subcollections-list .collection-card {
+  position: relative;
   min-width: 0;
   cursor: default;
   text-decoration: none;
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   grid-template-rows: repeat(1, 1fr);
+  overflow: hidden;
+}
+
+#collections-list .collection-card hr, #subcollections-list .collection-card hr {
+  margin-block-start: 0;
+}
+
+.collection-card .visibility-icon {
+  position: absolute;
+  right: 0;
+  padding: 4px;
 }
 
 .collection-card a {
-  color: #000;
+  color: inherit;
   text-decoration: none;
 }
 .collection-card h2 {
-  margin-left: 6px;
+  margin: 14px;
+  overflow-wrap: anywhere;
 }
 
 .collection-preview {
@@ -455,13 +522,26 @@ button:disabled {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #aaa;
+  background: inherit;
 }
 
 .collection-preview .empty-collection {
   background-image: url("emptyfolder.png");
   background-repeat: no-repeat;
   background-position: center center;
+  position: relative;
+}
+
+.collection-preview .empty-collection:after {
+  content: "";
+  position: absolute;
+  width: 100%; height: 100%;
+  left: 0; top: 0;
+  background-image: radial-gradient(#FFFF00 1px, transparent 1px), radial-gradient(#FFFF00 1px, transparent 1px);
+  background-size: 3px 3px;
+  background-position: 0 0, 4px 4px;
+  background-color: #fff;
+  z-index: -1;
 }
 
 .collection-preview img {
@@ -471,7 +551,16 @@ button:disabled {
 }
 
 .collection-controls {
-  padding: 6px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(38px, max-content));
+  place-content: space-between;
+  gap: 12px;
+}
+
+.collection-controls button {
+  aspect-ratio: 1 / 1;
+  height: 38px;
 }
 
 .collection-children {
@@ -545,17 +634,20 @@ footer {
   right: 20px;
   bottom: 20px;
   z-index: 10;
-  padding: 12px 18px;
+  padding: 8px 16px;
 }
 
-#create-pin-dialog, #pinterest-import-dialog {
+dialog {
   width: min(440px, calc(100% - 32px));
-  max-height: 90vh;
   overflow: auto;
   padding: 16px;
 }
 
-#create-pin-dialog::backdrop, #pinterest-import-dialog::backdrop {
+#settings-dialog, #account-settings-dialog {
+  width: min(300px, calc(100% - 32px));
+}
+
+dialog::backdrop {
   background: rgb(0 0 0 / 45%);
 }
 
@@ -636,7 +728,7 @@ footer {
   border-bottom-color: #eee;
 }
 
-#create-pin-progress {
+progress {
   display: block;
   width: 100%;
   margin-top: 12px;
@@ -650,19 +742,19 @@ footer {
   border-bottom-color: #eee;
 }
 
-#create-pin-progress::-webkit-progress-bar {
+progress::-webkit-progress-bar {
   background: #C0C0C0;
 }
 
-#create-pin-progress::-webkit-progress-value {
+progress::-webkit-progress-value {
   background: #00007B;
 }
 
-#create-pin-progress::-moz-progress-bar {
+progress::-moz-progress-bar {
   background: #00007B;
 }
 
-#create-pin-form button[type="submit"], #pinterest-import-start {
+#create-pin-form button[type="submit"], #pinterest-import-start, #create-pin-open {
   float: right;
   height: 43px;
   display: grid;
@@ -673,8 +765,15 @@ footer {
   font-weight: bold;
 }
 
+
 #pinterest-preview-result h3 {
   text-align: left;
+}
+
+#account-usage progress {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
 }
 
 

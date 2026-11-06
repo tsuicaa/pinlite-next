@@ -13,8 +13,9 @@
     <meta property="og:image:alt" content="PinLite">
     <meta name="twitter:card" content="summary">
     <title>PinLite</title>
-    <link rel="preconnect" href="https://i.pinimg.com">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/themes.js"></script>
+    <script src="/static/settings.js" defer></script>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?">
     <link rel="icon" type="image/x-icon" href="/favicon.ico?">
     <script src="/static/masonry.js" defer></script>
@@ -42,8 +43,8 @@
         <div id="account" class="panel" hidden>
             <form id="account-actions" hidden>
                 <h2 id="account-display-name"></h2>
-                <p id="account-usage" style="white-space: pre-line"></p>
-                <a href="/?view=my-pins"><button id="account-pins" type="button">My pins</button></a>
+                <br>
+                <button id="account-settings-open" type="button">Account settings</button>
                 <br><br>
                 <button id="account-logout" type="button">Sign out</button>
             </form>
@@ -87,12 +88,12 @@
                     Import your Pinterest boards
                 </button>
                 <br><br>
-                <a href="https://github.com/namiisama/pinlite-feedback/issues" target="_blank"><button class="blue"
+                <a href="https://github.com/tsuicaa/pinlite-next/issues" target="_blank"><button class="blue"
                         type="button">Submit bug or request feature</button></a>
             </form>
         </div>
         <hr>
-        <p id="report-status" role="status" aria-live="polite"></p>
+        <p id="report-status" role="status"></p>
         <section id="collections-panel" hidden>
             <h2>Your collections</h2>
 
@@ -105,17 +106,14 @@
             <p id="collections-status" role="status">Checking sign-in...</p>
             <ul id="collections-list"></ul>
         </section>
-        <section id="detail" hidden aria-label="Pin detail">
+        <section id="detail" hidden>
             <button id="back">Back</button>
             <div class="detail-card">
                 <div class="inner">
                     <h2 id="detail-title"></h2>
-                    <input id="pin-edit-title" form="pin-edit-form" type="text" maxlength="300" aria-label="Title"
-                        required hidden>
-
+                    <input id="pin-edit-title" form="pin-edit-form" type="text" maxlength="300" required hidden>
                     <p id="detail-description"></p>
-                    <textarea id="pin-edit-description" form="pin-edit-form" maxlength="10000" rows="5"
-                        aria-label="Description" hidden></textarea>
+                    <textarea id="pin-edit-description" form="pin-edit-form" maxlength="10000" rows="5" hidden></textarea>
                     <p id="detail-tags"></p>
 
                     <div id="pin-edit-tags-field" hidden>
@@ -127,7 +125,7 @@
                     <p id="pin-visibility-row" hidden>
 
                         <span id="pin-visibility"></span>
-                        <select id="pin-edit-visibility" form="pin-edit-form" aria-label="Visibility" hidden>
+                        <select id="pin-edit-visibility" form="pin-edit-form" hidden>
                             <option value="private">Private</option>
                             <option value="public">Public</option>
                         </select>
@@ -185,8 +183,9 @@
             </section>
         </section>
         <dialog id="create-pin-dialog" class="panel">
-            <button id="create-pin-close" type="button" aria-label="Close">X</button>
+            <button id="create-pin-close" type="button">X</button>
             <h2>Create a pin</h2>
+            <hr>
             <form id="create-pin-form" hidden>
                 <input id="new-pin-title" type="text" maxlength="300" placeholder="Title">
                 <br><br>
@@ -233,14 +232,14 @@
                     </select>
                 </p>
 
-                <button type="submit"><i class="icon search"></i>Create pin</button>
+                <button type="submit"><i class="icon pushpin"></i>Create pin</button>
             </form>
 
             <p id="create-pin-status" role="status">Checking sign-in...</p>
             <progress id="create-pin-progress" max="100" value="70" hidden></progress>
         </dialog>
-        <dialog id="pinterest-import-dialog" class="panel" aria-labelledby="pinterest-import-title">
-            <button id="pinterest-import-close" type="button" aria-label="Close">X</button>
+        <dialog id="pinterest-import-dialog" class="panel">
+            <button id="pinterest-import-close" type="button">X</button>
             <h2 id="pinterest-import-title">Import Pinterest board</h2>
 
             <form id="pinterest-preview-form" hidden>
@@ -271,16 +270,98 @@
             </form>
         </dialog>
 
+        <dialog id="settings-dialog" class="panel">
+            <h2 id="settings-title">Display settings</h2>
+            <hr>
+            <p>
+                <label for="theme">Theme</label>
+                <br>
+                <select id="theme">
+                    <option value="classic">Default</option>
+                    <option value="dark">Default dark</option>
+                    <option value="oldweb">Old Web</option>
+                    <option value="terminal">Terminal</option>
+                    <option value="parchment">Parchment</option>
+                    <option value="ao3">AO3</option>
+                    <option value="geocities">GeoCities</option>
+                </select>
+            </p>
+            <p>
+                <label for="pin-size">Pin size</label>
+                <br>
+                <select id="pin-size">
+                    <option value="default">Default</option>
+                    <option value="compact">Compact</option>
+                    <option value="large">Large</option>
+                </select>
+            </p>
+            <form method="dialog">
+                <button type="submit">Done</button>
+            </form>
+        </dialog>
+        <dialog id="account-settings-dialog" class="panel">
+            <h2 id="account-settings-title">Account settings</h2>
+            <hr>
+            <p id="account-usage-status" role="status"></p>
+
+            <div id="account-usage" hidden>
+            <p>
+                <label for="account-pin-progress">Pins created</label>
+                <progress id="account-pin-progress" max="1" value="0"></progress>
+                <span id="account-pin-usage"></span>
+            </p>
+
+            <p>
+                <label for="account-storage-progress">Image storage</label>
+                <progress id="account-storage-progress" max="1" value="0"></progress>
+                <span id="account-storage-usage"></span>
+            </p>
+            </div>
+
+            <form id="account-profile-form">
+                <label for="profile-display-name">Display name</label>
+                <input id="profile-display-name" type="text" autocomplete="nickname"
+                    maxlength="32" required>
+                <button type="submit">Save name</button>
+            </form>
+
+            <form id="account-password-form">
+                <p>
+                <label for="settings-current-password">Current password</label><br>
+                <input id="settings-current-password" type="password"
+                        autocomplete="current-password" maxlength="64" required>
+                </p>
+                <p>
+                <label for="settings-new-password">New password</label><br>
+                <input id="settings-new-password" type="password"
+                        autocomplete="new-password" minlength="8" maxlength="64" required>
+                </p>
+                <p>
+                <label for="settings-confirm-password">Confirm new password</label><br>
+                <input id="settings-confirm-password" type="password"
+                        autocomplete="new-password" minlength="8" maxlength="64" required>
+                </p>
+                <button type="submit">Change password</button>
+            </form>
+
+            <p id="account-settings-status" role="status"></p>
+
+            <form method="dialog">
+                <button type="submit">Done</button>
+            </form>
+        </dialog>
 
         <div id="feed-heading" hidden>
+            <nav id="collection-breadcrumb" hidden></nav>
             <h2 id="heading"></h2>
+            <ul id="subcollections-list" hidden></ul>
             <p id="feed-count"></p>
         </div>
-        <div id="loading-indicator" hidden aria-hidden="true">
+        <div id="loading-indicator" hidden>
             <img src="loading.gif" />
         </div>
 
-        <div id="grid" class="grid" aria-label="Pins"></div>
+        <div id="grid" class="grid"></div>
         <div id="sentinel">
             <p id="status" role="status"></p><button id="load-more" hidden>Load more</button>
         </div>
@@ -288,7 +369,9 @@
     </main>
     <hr>
 
-    <button id="create-pin-open" class="red" type="button" hidden>Create pin</button>
+    <button id="create-pin-open" class="red" type="button" hidden>
+        <i class="icon pushpin"></i> Create pin
+    </button>
     <footer>
         <small>Made with spite and hatred by <a href="https://x.com/tsuicaa" target="_blank">tsu ツ</a>.</small>
         <br>
