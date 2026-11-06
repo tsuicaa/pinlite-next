@@ -92,6 +92,15 @@ button:hover > .icon {
 .icon.search {
   background-image: url("search.png");
 }
+.icon.collections {
+  background-image: url("collections.png");
+}
+.icon.import {
+  background-image: url("import.png");
+}
+.icon.save {
+  background-image: url("save.png");
+}
 
 header {
   position: fixed;
@@ -539,32 +548,32 @@ footer {
   padding: 12px 18px;
 }
 
-#create-pin-dialog {
+#create-pin-dialog, #pinterest-import-dialog {
   width: min(440px, calc(100% - 32px));
   max-height: 90vh;
   overflow: auto;
   padding: 16px;
 }
 
-#create-pin-dialog::backdrop {
+#create-pin-dialog::backdrop, #pinterest-import-dialog::backdrop {
   background: rgb(0 0 0 / 45%);
 }
 
-#create-pin-close {
+#create-pin-close, #pinterest-import-close{
   float: right;
 }
 
-#create-pin-form {
+#create-pin-form, #pinterest-preview-form {
   margin: 0;
   text-align: left;
 }
 
-#create-pin-form input {
+#create-pin-form input, #pinterest-preview-form input[type="text"] {
   width: 100%;
   max-width: 100%;
 }
 
-#create-pin-form #new-pin-title {
+#create-pin-form #new-pin-title, #pinterest-board-url {
   font-size: 1.2em;
   font-family: serif;
   padding: 6px;
@@ -653,7 +662,7 @@ footer {
   background: #00007B;
 }
 
-#create-pin-form button[type="submit"] {
+#create-pin-form button[type="submit"], #pinterest-import-start {
   float: right;
   height: 43px;
   display: grid;
@@ -662,6 +671,10 @@ footer {
   align-items: center;
   column-gap: 5px;
   font-weight: bold;
+}
+
+#pinterest-preview-result h3 {
+  text-align: left;
 }
 
 

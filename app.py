@@ -1159,6 +1159,9 @@ def preview_pinterest_board():
     except BoardPreviewError as error:
         return jsonify(error=str(error)), 502
 
+
+
+@app.post("/api/import/pinterest/page")
 @app.post("/api/import/pinterest/section")
 def import_pinterest_section():
     user_id = login_session.get("user_id")
@@ -1183,8 +1186,8 @@ def import_pinterest_section():
     section_id = data.get("section_id")
     cursor = data.get("cursor")
 
-    if not isinstance(section_id, str):
-        return jsonify(error="Choose a board section"), 400
+    if section_id is not None and not isinstance(section_id, str):
+        return jsonify(error="Invalid board section"), 400
 
     if cursor is not None and (
         not isinstance(cursor, str) or not 1 <= len(cursor) <= 8192
@@ -1195,16 +1198,20 @@ def import_pinterest_section():
         board = preview_board(url)
         _, _, source = board_path(url)
 
-        section = next(
-            (item for item in board["sections"] if item["id"] == section_id),
-            None,
-        )
-        if section is None:
-            return jsonify(error="Section not found in the board preview"), 400
+        section = None
+        section_tag = ""
 
-        section_tag = " ".join(
-            str(section["name"]).replace(",", " ").split()
-        ).casefold()[:80].strip()
+        if section_id is not None:
+            section = next(
+                (item for item in board["sections"] if item["id"] == section_id),
+                None,
+            )
+            if section is None:
+                return jsonify(error="Section not found in the board preview."), 400
+
+            section_tag = " ".join(
+                str(section["name"]).replace(",", " ").split()
+            ).casefold()[:80].strip()
 
         page = board_pin_page(
             source, board["id"], section_id=section_id, cursor=cursor
@@ -1216,12 +1223,12 @@ def import_pinterest_section():
 
     if not page["pins"]:
         return jsonify(
-            added=0, reused=0, linked=0,
+            added=0, reused=0, linked=0, skipped_in_sections=0,
             next_cursor=page["next_cursor"],
             quota_reached=False,
         )
 
-    added = reused = linked = 0
+    added = reused = linked = skipped_in_sections = 0
     quota_reached = False
 
     with Session.begin() as db:
@@ -1254,14 +1261,16 @@ def import_pinterest_section():
 
         board_key = f"pinterest:board:{board['id']}"
         parent = get_collection(board_key, board["name"])
-        child = get_collection(
-            f"{board_key}:section:{section_id}",
-            section["name"],
-            parent.id,
-        )
+        target = parent
+
+        if section is not None:
+            target = get_collection(
+                f"{board_key}:section:{section_id}",
+                section["name"],
+                parent.id,
+            )
 
         for item in page["pins"]:
-            # Pinterest CDN sizes share an asset path after the size segment.
             asset = urlsplit(item["image_url"]).path.split("/", 2)[-1]
             digest = sha256(asset.encode()).hexdigest()
             pin_key = f"{board_key}:image:{digest}"
@@ -1272,6 +1281,21 @@ def import_pinterest_section():
                     Pin.import_key == pin_key,
                 )
             )
+
+            if section is None and pin is not None:
+                in_section = db.scalar(
+                    select(CollectionPin.pin_id)
+                    .join(Collection, Collection.id == CollectionPin.collection_id)
+                    .where(
+                        Collection.parent_id == parent.id,
+                        CollectionPin.pin_id == pin.id,
+                    )
+                    .limit(1)
+                )
+
+                if in_section is not None:
+                    skipped_in_sections += 1
+                    continue
 
             if pin is None:
                 if remaining == 0:
@@ -1307,7 +1331,7 @@ def import_pinterest_section():
 
             membership = db.scalar(
                 insert(CollectionPin)
-                .values(collection_id=child.id, pin_id=pin.id)
+                .values(collection_id=target.id, pin_id=pin.id)
                 .on_conflict_do_nothing(
                     index_elements=["collection_id", "pin_id"]
                 )
@@ -1317,12 +1341,13 @@ def import_pinterest_section():
                 linked += 1
 
         result = {
-            "collection_id": str(child.id),
+            "collection_id": str(target.id),
             "added": added,
             "reused": reused,
             "linked": linked,
             "next_cursor": cursor if quota_reached else page["next_cursor"],
             "quota_reached": quota_reached,
+            "skipped_in_sections": skipped_in_sections
         }
 
     return jsonify(result)
