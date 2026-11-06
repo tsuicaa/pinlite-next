@@ -22,6 +22,7 @@ function resetFeed() {
     status.textContent = "";
     loadMore.hidden = true;
     document.dispatchEvent(new CustomEvent("collection-feed", { detail: null }));
+    clearPinSelection();
 }
 
 function renderPin(pin) {
@@ -110,6 +111,7 @@ async function loadPins() {
         }
 
         grid.append(...data.pins.map(renderPin));
+        if (selectingPins) updateBulkControls();
         cursor = data.next_cursor;
 
         loadMore.hidden = !cursor;
@@ -157,6 +159,10 @@ async function showRoute() {
     const showingCollections = !showingDetail
         && params.get("view") === "collections";
     const showingFeed = !showingDetail && !showingCollections;
+    const canSelectPins = showingFeed && myPins && !$("account-actions").hidden;
+    $("bulk-pin-controls").hidden = !canSelectPins;
+
+    if (!canSelectPins) clearPinSelection();
 
     if (!grid.hidden && !showingFeed) {
         feedScroll = window.scrollY;
@@ -355,7 +361,7 @@ async function loadRelated(pinId) {
         );
 
         if (relatedCursor) url.searchParams.set("before", relatedCursor);
-        const response = await fetch(url, {signal: controller.signal});
+        const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) throw new Error("Can't load related pins");
 
         const result = await response.json();
@@ -366,7 +372,7 @@ async function loadRelated(pinId) {
         relatedSection.hidden = !relatedGrid.childElementCount;
         relatedMore.hidden = !relatedCursor;
     } catch {
-        if (!controller.signal.aborted){
+        if (!controller.signal.aborted) {
             relatedSection.hidden = false;
             relatedStatus.textContent = "Can't load related pins";
             relatedMore.hidden = false;
@@ -388,6 +394,129 @@ document.addEventListener("pin-detail", event => {
 relatedMore.addEventListener("click", () => {
     const pinId = new URLSearchParams(location.search).get("pin");
     if (pinId) loadRelated(pinId);
+});
+
+const selectedPins = new Set();
+const bulkLimit = 100;
+let selectingPins = false;
+let deletingPins = false;
+
+function updateBulkControls() {
+    const count = selectedPins.size;
+    const toggle = $("bulk-pin-toggle");
+    const remove = $("bulk-pin-delete");
+
+    toggle.textContent = selectingPins ? "Cancel selection" : "Select pins";
+    toggle.setAttribute("aria-pressed", String(selectingPins));
+    toggle.disabled = deletingPins;
+    $("bulk-pin-actions").hidden = !selectingPins;
+    $("bulk-pin-all").disabled = deletingPins || count >= bulkLimit;
+    remove.disabled = deletingPins || !count;
+    remove.textContent = count ? `Delete ${count} ${count === 1 ? "pin" : "pins"}` : "Delete pins";
+
+    for (const card of grid.querySelectorAll("a.pin")) {
+        const selected = selectingPins && selectedPins.has(card.dataset.pinId);
+        card.classList.toggle("pin-selected", selected);
+
+        if (selectingPins) {
+            card.setAttribute("role", "button");
+            card.setAttribute("aria-pressed", String(selected));
+        } else {
+            card.removeAttribute("role");
+            card.removeAttribute("aria-pressed");
+        }
+    }
+}
+
+function clearPinSelection() {
+    selectingPins = false;
+    selectedPins.clear();
+    $("bulk-pin-status").textContent = "";
+    updateBulkControls();
+}
+
+$("bulk-pin-toggle").addEventListener("click", () => {
+    if (selectingPins) {
+        clearPinSelection();
+    } else {
+        selectingPins = true;
+        updateBulkControls();
+    }
+});
+
+grid.addEventListener("click", event => {
+    const card = event.target.closest("a.pin");
+    if (!selectingPins || !card || !grid.contains(card)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (deletingPins) return;
+
+    const id = card.dataset.pinId;
+
+    if (selectedPins.has(id)) {
+        selectedPins.delete(id);
+    } else if (selectedPins.size < bulkLimit) {
+        selectedPins.add(id);
+    } else {
+        $("bulk-pin-status").textContent = "You can delete maximum 100 pins at a time";
+        return;
+    }
+
+    $("bulk-pin-status").textContent = "";
+    updateBulkControls();
+}, true);
+
+grid.addEventListener("keydown", event => {
+    if (selectingPins && event.key === " " && event.target.matches("a.pin")) {
+        event.preventDefault();
+        event.target.click();
+    }
+});
+
+$("bulk-pin-all").addEventListener("click", () => {
+    for (const card of grid.querySelectorAll("a.pin")) {
+        if (selectedPins.size >= bulkLimit) break;
+        selectedPins.add(card.dataset.pinId);
+    }
+
+    $("bulk-pin-status").textContent = `${selectedPins.size} pins selected.`;
+    updateBulkControls();
+});
+
+$("bulk-pin-delete").addEventListener("click", async () => {
+    if (deletingPins || !selectedPins.size) return;
+
+    const ids = [...selectedPins];
+    if (!confirm(
+        `Delete ${ids.length} ${ids.length === 1 ? "pin" : "pins"}? `
+        + "They'll also be removed from every collection they're in."
+    )) return;
+
+    deletingPins = true;
+    $("bulk-pin-status").textContent = "Deleting...";
+    updateBulkControls();
+
+    try {
+        const response = await fetch("/api/me/pins/bulk-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin_ids: ids }),
+        });
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error || "Could not delete pins.");
+        if (!selectingPins) return;
+
+        resetFeed();
+        showRoute();
+        $("bulk-pin-status").textContent = `Deleted ${result.deleted} ${result.deleted === 1 ? "pin" : "pins"}.`;
+    } catch (error) {
+        if (selectingPins) $("bulk-pin-status").textContent = error.message;
+    } finally {
+        deletingPins = false;
+        updateBulkControls();
+    }
 });
 
 setupMasonry(relatedGrid);

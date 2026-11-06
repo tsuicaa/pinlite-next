@@ -802,6 +802,50 @@ def my_pins():
         next_cursor=pins[-1]["id"] if has_more else None,
     )
 
+@app.post("/api/me/pins/bulk-delete")
+def bulk_delete_pins():
+    user_id = login_session.get("user_id")
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+    values = data.get("pin_ids") if isinstance(data, dict) else None
+
+    if not isinstance(values, list) or not 1 <= len(values) <= 100:
+        return jsonify(error="Select between 1 and 100 pins"), 400
+
+    ids = set()
+
+    for value in values:
+        if (
+            not isinstance(value, str)
+            or not 1 <= len(value) <= 19
+            or not value.isascii()
+            or not value.isdecimal()
+        ):
+            return jsonify(error="Invalid pin ID"), 400
+
+        pin_id = int(value)
+        if not 0 < pin_id <= 9223372036854775807:
+            return jsonify(error="Invalid pin ID"), 400
+
+        ids.add(pin_id)
+
+    with Session() as db:
+        deleted = db.scalars(
+            delete(Pin)
+            .where(Pin.creator_id == user_id, Pin.id.in_(ids))
+            .returning(Pin.id)
+        ).all()
+
+        if len(deleted) != len(ids):
+            db.rollback()
+            return jsonify(error="One or more selected pins cannot be found"), 404
+
+        db.commit()
+
+    return jsonify(deleted=len(deleted))
+
 @app.patch("/api/pins/<int:pin_id>")
 def edit_pin(pin_id):
     user_id = login_session.get("user_id")
@@ -926,8 +970,8 @@ def create_uploaded_pin():
         return jsonify(error=str(error)), 400
 
     identifier = uuid4().hex
-    image_key = f"images/{identifier}.webp"
-    thumbnail_key = f"thumbnails/{identifier}.webp"
+    image_key = f"images/{identifier}.jpg"
+    thumbnail_key = f"thumbnails/{identifier}.jpg"
     keys = [image_key, thumbnail_key]
 
     try:
@@ -1344,8 +1388,8 @@ def import_pinterest_section():
                             break
 
                         identifier = uuid4().hex
-                        image_key = f"images/{identifier}.webp"
-                        thumbnail_key = f"thumbnails/{identifier}.webp"
+                        image_key = f"images/{identifier}.jpg"
+                        thumbnail_key = f"thumbnails/{identifier}.jpg"
                         written_keys.extend([image_key, thumbnail_key])
 
                         put_image(image_key, prepared["image"])

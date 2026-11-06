@@ -200,7 +200,7 @@
                             Drop an image here, or click to choose.<br>
                             <small>(JPEG, PNG or static WebP. Maximum 10 MB)</small>
                         </label>
-                        <input type="file" id="new-pin-file" required accept="image/jpeg,image/png,image/webp">
+                        <input type="file" id="new-pin-file" required accept="image/jpeg,image/png,image/jpeg">
                         <div id="preview"></div>
                     </div>
 
@@ -378,6 +378,14 @@
         <div id="feed-heading" hidden>
             <nav id="collection-breadcrumb" hidden></nav>
             <h2 id="heading"></h2>
+            <div id="bulk-pin-controls" hidden>
+                <button id="bulk-pin-toggle" type="button">Select pins</button>
+                <span id="bulk-pin-actions" hidden>
+                    <button id="bulk-pin-all" type="button">Select all loaded</button>
+                    <button id="bulk-pin-delete" class="red" type="button" disabled>Delete pins</button>
+                </span>
+                <p id="bulk-pin-status" role="status"></p>
+            </div>
             <ul id="subcollections-list" hidden></ul>
             <p id="feed-count"></p>
         </div>

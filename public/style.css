@@ -804,6 +804,10 @@ progress::-moz-progress-bar {
   margin: 4px 0;
 }
 
+#grid .pin-selected {
+  outline: 3px solid #467df0;
+  outline-offset: -3px;
+}
 
 @media (max-width: 500px) { 
   #detail-image {

@@ -29,7 +29,7 @@ def put_image(key, body):
         Bucket=bucket,
         Key=key,
         Body=body,
-        ContentType="image/webp"
+        ContentType="image/jpeg"
     )
 
 def delete_images(keys):

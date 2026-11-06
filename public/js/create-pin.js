@@ -71,7 +71,7 @@
 
         const selected = files[0];
 
-        if (!["image/jpeg", "image/png", "image/webp"].includes(selected.type)) {
+        if (!["image/jpeg", "image/png", "image/jpeg"].includes(selected.type)) {
             status.textContent = "Accepted formats are JPEG, PNG, WebP";
             return;
         }
@@ -133,7 +133,7 @@
 
     async function convertImage(file) {
         if (
-            file.type === "image/webp"
+            file.type === "image/jpeg"
             || typeof createImageBitmap !== "function"
         ) {
             return file;
@@ -156,12 +156,12 @@
             context.drawImage(bitmap, 0, 0);
 
             const blob = await new Promise(resolve => {
-                canvas.toBlob(resolve, "image/webp", 0.85);
+                canvas.toBlob(resolve, "image/jpeg", 0.85);
             });
 
-            if (!blob || blob.type !== "image/webp") return file;
+            if (!blob || blob.type !== "image/jpeg") return file;
 
-            return new File([blob], "image.webp", { type: "image/webp" });
+            return new File([blob], "image.jpeg", { type: "image/jpeg" });
         } finally {
             bitmap.close();
             canvas.width = canvas.height = 0;

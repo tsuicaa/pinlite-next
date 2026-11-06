@@ -26,14 +26,14 @@ def prepare_image(file):
             original.load()
 
             keep_original = (
-                original.format == "WEBP"
+                original.format == "JPEG"
                 and not any(
                     original.info.get(key)
                     for key in ("exif", "icc_profile", "xmp")
                 )
             )
 
-            image = ImageOps.exif_transpose(original).convert("RGBA")
+            image = ImageOps.exif_transpose(original).convert("RGB")
 
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ValueError("Cannot read image") from None
@@ -42,19 +42,19 @@ def prepare_image(file):
         full_image = data
     else:
         full = BytesIO()
-        image.save(full, format="WEBP", quality=85)
+        image.save(full, format="JPEG", quality=85)
         full_image = full.getvalue()
 
     thumbnail = image.copy()
     thumbnail.thumbnail((480, 480))
 
     small = BytesIO()
-    thumbnail.save(small, format="WEBP", quality=75)
+    thumbnail.save(small, format="JPEG", quality=75)
 
     return {
         "image": full_image,
         "thumbnail": small.getvalue(),
         "width": image.width,
         "height": image.height,
-        "mime_type": "image/webp",
+        "mime_type": "image/jpeg",
     }
