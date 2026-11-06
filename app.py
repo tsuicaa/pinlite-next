@@ -3,13 +3,13 @@ from urllib.parse import quote, urlsplit
 from datetime import timedelta, datetime, timezone
 
 from flask import Flask, jsonify, request, session as login_session
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import Session
-from models import Collection, CollectionPin, Media, Pin, User, RequestLimit, Tag, PinTag
+from models import Collection, CollectionPin, Media, Pin, User, RequestLimit, Tag, PinTag, PinReport
 
 from uuid import uuid4
 from images import prepare_image
@@ -25,6 +25,8 @@ from tags import get_tags, normalize_tags, replace_tags
 from pinterest_boards import BoardPreviewError, BoardURLError, preview_board, board_path, board_pin_page
 
 from hashlib import sha256
+
+import json
 
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
@@ -1120,6 +1122,7 @@ def limit_requests():
         "preview_pinterest_board": ("account", 4, 60),
         "import_pinterest_section": ("account", 4, 60),
         "change_password": ("account", 5, 60),
+        "report_pin": ("account", 10, 3600),
     }
 
     rule = rules.get(request.endpoint)
@@ -1450,3 +1453,105 @@ def import_pinterest_section():
         }
 
     return jsonify(result)
+
+
+REPORT_REASONS = {
+    "ai_generated", "spam", "harassment",
+    "sexual_content", "copyright", "other",
+}
+
+
+@app.post("/api/pins/<int:pin_id>/report")
+def report_pin(pin_id):
+    user_id = login_session.get("user_id")
+    if user_id is None:
+        return jsonify(error="Sign in to report a pin."), 401
+
+    if not 0 < pin_id <= 9223372036854775807:
+        return jsonify(error="Pin not found."), 404
+
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify(error="Expected a JSON object."), 400
+
+    reason = data.get("reason")
+    note = data.get("note", "")
+
+    if not isinstance(reason, str) or reason not in REPORT_REASONS:
+        return jsonify(error="Choose a report reason."), 400
+
+    if not isinstance(note, str) or len(note) > 1000:
+        return jsonify(error="Notes must be at most 1,000 characters."), 400
+
+    with Session.begin() as db:
+        public_pin = db.scalar(
+            select(Pin.id).where(Pin.id == pin_id, Pin.visibility == "public")
+        )
+        if public_pin is None:
+            return jsonify(error="Pin not found."), 404
+
+        created = db.scalar(
+            insert(PinReport)
+            .values(
+                pin_id=pin_id,
+                reporter_id=user_id,
+                reason=reason,
+                note=note.strip(),
+            )
+            .on_conflict_do_nothing(index_elements=["pin_id", "reporter_id"])
+            .returning(PinReport.pin_id)
+        )
+
+    return jsonify(reported=True, already_reported=created is None)
+
+
+@app.cli.command("pin-reports")
+@click.option("--limit", type=click.IntRange(1, 200), default=50)
+def list_pin_reports(limit):
+    query = (
+        select(PinReport)
+        .where(PinReport.status == "pending")
+        .order_by(PinReport.created_at, PinReport.pin_id, PinReport.reporter_id)
+        .limit(limit)
+    )
+
+    with Session() as db:
+        reports = db.scalars(query).all()
+
+        if not reports:
+            click.echo("No pending reports.")
+            return
+
+        for report in reports:
+            click.echo(json.dumps({
+                "pin_id": str(report.pin_id),
+                "reason": report.reason,
+                "note": report.note,
+                "created_at": report.created_at.isoformat(),
+            }))
+
+
+@app.cli.command("resolve-pin-reports")
+@click.argument("pin_id", type=click.IntRange(1, 9223372036854775807))
+@click.option("--action", type=click.Choice(["dismiss", "unpublish"]), required=True)
+def resolve_pin_reports(pin_id, action):
+    with Session.begin() as db:
+        pin = db.get(Pin, pin_id, with_for_update=True)
+
+        if pin is None:
+            raise click.ClickException("Pin not found")
+
+        resolved = db.execute(
+            update(PinReport)
+            .where(PinReport.pin_id == pin_id, PinReport.status == "pending")
+            .values(status="dismissed" if action == "dismiss" else "actioned")
+        ).rowcount
+
+        if not resolved:
+            click.echo("No pending reports for this pin")
+            return
+
+        if action == "unpublish":
+            pin.visibility = "private"
+
+    click.echo(f"Resolved {resolved} report(s) for pin {pin_id}: {action}")

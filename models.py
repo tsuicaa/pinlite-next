@@ -199,3 +199,26 @@ class PinTag(Base):
         primary_key=True,
         index=True,
     )
+
+class PinReport(Base):
+    __tablename__ = "pin_reports"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'dismissed', 'actioned')",
+            name="pin_reports_status_check",
+        ),
+        Index("pin_reports_queue_index", "status", "created_at"),
+    )
+
+    pin_id: Mapped[int] = mapped_column(
+        ForeignKey("pins.id", ondelete="CASCADE"), primary_key=True,
+    )
+    reporter_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True,
+    )
+    reason: Mapped[str] = mapped_column(String(32))
+    note: Mapped[str] = mapped_column(Text, server_default="")
+    status: Mapped[str] = mapped_column(String(16), server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )

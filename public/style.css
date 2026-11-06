@@ -643,12 +643,16 @@ dialog {
   padding: 16px;
 }
 
-#settings-dialog, #account-settings-dialog {
+#settings-dialog, #account-settings-dialog, #report-dialog {
   width: min(300px, calc(100% - 32px));
 }
 
 dialog::backdrop {
   background: rgb(0 0 0 / 45%);
+}
+
+#report-dialog textarea {
+  width: 100%
 }
 
 #create-pin-close, #pinterest-import-close{
