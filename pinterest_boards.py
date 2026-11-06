@@ -230,11 +230,23 @@ def board_pin_page(source, board_id, *, section_id=None, cursor=None):
             continue
 
         pin_id = str(row.get("id", ""))
-        source_url = (
-            f"{BASE}/pin/{pin_id}/"
-            if re.fullmatch(r"[0-9]{1,30}", pin_id)
-            else None
-        )
+        source_url = None
+        link = row.get("link")
+
+        if isinstance(link, str):
+            link = link.strip()
+            try:
+                parsed = urlsplit(link)
+                if (
+                    len(link) <= 4096
+                    and parsed.scheme in ("http", "https")
+                    and parsed.hostname
+                    and parsed.username is None
+                    and parsed.password is None
+                ):
+                    source_url = link
+            except ValueError:
+                pass
 
         description = row.get("description")
         if not isinstance(description, str):

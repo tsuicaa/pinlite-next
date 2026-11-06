@@ -268,6 +268,7 @@
 
         const version = accountVersion;
         const title = get("new-pin-title").value.trim();
+        const sourceUrl = get("new-pin-source").value.trim();
         const visibility = get("new-pin-visibility").value;
         const collectionId = collection.value;
         const externalUrl = imageUrl.value.trim();
@@ -298,6 +299,7 @@
             const body = new FormData();
             body.append("image", prepared);
             body.append("title", title);
+            body.append("source_url", sourceUrl);
             body.append("visibility", visibility);
             body.append("collection_id", collectionId);
             body.append("tags", tags.join(","));

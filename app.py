@@ -949,6 +949,22 @@ def create_uploaded_pin():
     if not 1 <= len(title) <= 300:
         return jsonify(error="Title must be 1–300 characters"), 400
 
+    source_url = request.form.get("source_url", "").strip() or None
+
+    if source_url:
+        try:
+            source = urlsplit(source_url)
+            if (
+                len(source_url) > 4096
+                or source.scheme not in ("http", "https")
+                or not source.hostname
+                or source.username is not None
+                or source.password is not None
+            ):
+                raise ValueError
+        except ValueError:
+            return jsonify(error="Enter a valid HTTP or HTTPS source link"), 400
+
     if visibility not in ("public", "private"):
         return jsonify(error="Invalid visibility"), 400
 
@@ -1007,6 +1023,7 @@ def create_uploaded_pin():
                 creator_id=user_id,
                 media_id=media.id,
                 title=title,
+                source_url=source_url,
                 visibility=visibility,
             )
             db.add(pin)
