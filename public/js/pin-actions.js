@@ -14,7 +14,8 @@
 
   function setEditing(editing) {
     get("detail-title").hidden = editing;
-    get("detail-description").hidden = editing;
+    get("detail-description").parentElement.hidden =
+      editing || !pin?.description?.trim();
     get("pin-visibility").hidden = editing;
 
     title.hidden = !editing;
