@@ -33,7 +33,13 @@
     const names = pin.tags || [];
     get("detail-title").textContent = pin.title;
     get("detail-description").textContent = pin.description;
-    get("pin-visibility").textContent = pin.visibility;
+    get("pin-visibility").textContent = pin.moderation_hold
+      ? "Private - moderation hold"
+      : pin.visibility;
+
+    visibility.querySelector('option[value="public"]').disabled =
+      Boolean(pin.moderation_hold);
+
     get("detail-tags").replaceChildren(
       ...names.map(name => {
         const link = document.createElement("a");

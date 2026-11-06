@@ -117,40 +117,40 @@ dialog .panel {
 
 
 .icon.user {
-  background-image: url("user.png");
+  background-image: url("img/user.png");
 }
 .icon.pushpin {
-  background-image: url("pin.png");
+  background-image: url("img/pin.png");
 }
 .icon.settings {
-  background-image: url("settings.png");
+  background-image: url("img/settings.png");
 }
 .icon.search {
-  background-image: url("search.png");
+  background-image: url("img/search.png");
 }
 .icon.collections {
-  background-image: url("collections.png");
+  background-image: url("img/collections.png");
 }
 .icon.import {
-  background-image: url("import.png");
+  background-image: url("img/import.png");
 }
 .icon.save {
-  background-image: url("save.png");
+  background-image: url("img/save.png");
 }
 .icon.delete {
-  background-image: url("delete.png");
+  background-image: url("img/delete.png");
 }
 .icon.rename {
-  background-image: url("rename.png");
+  background-image: url("img/rename.png");
 }
 .icon.public {
-  background-image: url("public.png");
+  background-image: url("img/public.png");
 }
 .icon.private {
-  background-image: url("private.png");
+  background-image: url("img/private.png");
 }
 .icon.share {
-  background-image: url("share.png");
+  background-image: url("img/share.png");
 }
 
 header {
@@ -181,6 +181,14 @@ header .inner{
 header .title {
   margin: .5em 0;
   font-weight: bold;
+}
+
+header a {
+  text-decoration: none;
+}
+
+header .title sup{
+  font-size: 14px;
 }
 
 .header-nav button {
@@ -526,7 +534,7 @@ button:disabled {
 }
 
 .collection-preview .empty-collection {
-  background-image: url("emptyfolder.png");
+  background-image: url("img/emptyfolder.png");
   background-repeat: no-repeat;
   background-position: center center;
   position: relative;

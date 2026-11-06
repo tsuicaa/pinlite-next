@@ -58,6 +58,7 @@ def serialize_pin(pin, media):
         "width": media.width,
         "height": media.height,
         "visibility": pin.visibility,
+        "moderation_hold": pin.moderation_hold,
         "can_edit": pin.creator_id == login_session.get("user_id"),
     }
 
@@ -930,6 +931,9 @@ def edit_pin(pin_id):
         if pin is None:
             return jsonify(error="Pin not found"), 404
 
+        if pin.moderation_hold and visibility == "public":
+            return jsonify(error="This pin can't be published while under moderation hold"), 403
+
         pin.title = title.strip()
         pin.visibility = visibility
         pin.description = description.strip()
@@ -1553,5 +1557,23 @@ def resolve_pin_reports(pin_id, action):
 
         if action == "unpublish":
             pin.visibility = "private"
+            pin.moderation_hold = True
 
     click.echo(f"Resolved {resolved} report(s) for pin {pin_id}: {action}")
+
+
+@app.cli.command("clear-pin-hold")
+@click.argument("pin_id", type=click.IntRange(1, 9223372036854775807))
+def clear_pin_hold(pin_id):
+    with Session.begin() as db:
+        pin = db.get(Pin, pin_id, with_for_update=True)
+        if pin is None:
+            raise click.ClickException("Pin not found")
+
+        if not pin.moderation_hold:
+            click.echo("This pin is not under moderation hold")
+            return
+
+        pin.moderation_hold = False
+
+    click.echo(f"Cleared moderation hold on pin {pin_id}. The pin is still private.")

@@ -4,35 +4,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Lightweight Pinterest">
+    <meta name="description" content="Lightweight image board">
     <meta property="og:type" content="website">
     <meta property="og:title" content="PinLite">
-    <meta property="og:description" content="Lightweight Pinterest">
-    <meta property="og:url" content="https://pinlite.app/">
-    <meta property="og:image" content="https://pinlite.app/favicon.png">
+    <meta property="og:description" content="Lightweight image board">
+    <meta property="og:url" content="https://beta.pinlite.app/">
+    <meta property="og:image" content="https://beta.pinlite.app/favicon.png">
     <meta property="og:image:alt" content="PinLite">
     <meta name="twitter:card" content="summary">
-    <title>PinLite</title>
+    <title>PinLite 2.0 (beta)</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/themes.js"></script>
-    <script src="/static/settings.js" defer></script>
+    <script src="/static/js/themes.js"></script>
+    <script src="/static/js/settings.js" defer></script>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?">
     <link rel="icon" type="image/x-icon" href="/favicon.ico?">
-    <script src="/static/masonry.js" defer></script>
-    <script src="/static/collections.js" defer></script>
-    <script src="/static/create-pin.js" defer></script>
-    <script src="/static/pinterest-import.js" defer></script>
-    <script src="/static/pin-reports.js" defer></script>
-    <script src="/static/account.js" defer></script>
-    <script src="/static/pin-actions.js" defer></script>
-    <script src="/static/app.js" defer></script>
+    <script src="/static/js/masonry.js" defer></script>
+    <script src="/static/js/collections.js" defer></script>
+    <script src="/static/js/create-pin.js" defer></script>
+    <script src="/static/js/pinterest-import.js" defer></script>
+    <script src="/static/js/pin-reports.js" defer></script>
+    <script src="/static/js/account.js" defer></script>
+    <script src="/static/js/pin-actions.js" defer></script>
+    <script src="/static/js/app.js" defer></script>
 </head>
 
 <body>
     <header>
         <div class="inner">
             <a href="/">
-                <h2 class="title">PinLite 2.0</h2>
+                <h2 class="title"><img src="static/img/favicon.png" /> PinLite 2.0 <sup>(beta)</sup></h2>
             </a>
             <div class="header-nav">
                 <a href="/?view=my-pins"></a><button type="button" id="saved-pins" title="My pins"><i class="icon pushpin"></i></button>
@@ -78,16 +78,21 @@
                     <button type="submit"><i class="icon search"></i>Search</button>
                 </div>
                 <br>
-                <input type="checkbox" id="show-images" checked>
+                <!--<input type="checkbox" id="show-images" checked>
                 <label for="show-images">Images</label>
                 <input type="checkbox" id="show-videos" checked>
                 <label for="show-videos">Videos</label>
-                <br><br>
+                <br><br>-->
                 <button id="pinterest-import-open" type="button" class="green" hidden>
                     Import your Pinterest boards
                 </button>
-                <a href="https://github.com/tsuicaa/pinlite-next/issues" target="_blank"><button class="blue"
-                        type="button">Submit bug or request feature</button></a>
+                <br><br>
+                <a href="https://github.com/tsuicaa/pinlite-next/issues" target="_blank">
+                    <button class="blue" type="button">Submit bug or request feature</button>
+                </a>
+                <a href="https://ko-fi.com/tsuica" target="_blank">
+                    <button class="red" type="button">Support PinLite!</button>
+                </a>
             </form>
         </div>
         <hr>
@@ -399,7 +404,7 @@
     <footer>
         <small>Made with spite and hatred by <a href="https://x.com/tsuicaa" target="_blank">tsu ツ</a>.</small>
         <br>
-        <small><a href="https://ko-fi.com/tsuica" target="_blank">Support this project</a></small>
+        <small>Source available on <a href="https://github.com/tsuicaa/pinlite-next" target="_blank">GitHub</a>.</small>
     </footer>
 </body>
 

@@ -106,7 +106,11 @@ class Pin(Base):
         ),
         Index("pins_visbility_id_index", "visibility", "id"),
         Index("pins_search_index", "search_document", postgresql_using="gin"),
-        Index("pins_creator_import_key_index", "creator_id", "import_key", unique=True)
+        Index("pins_creator_import_key_index", "creator_id", "import_key", unique=True),
+        CheckConstraint(
+            "NOT moderation_hold OR visibility = 'private'",
+                name="pins_moderation_hold_check",
+        ),
     )
 
     id: Mapped[int] = mapped_column(
@@ -137,6 +141,8 @@ class Pin(Base):
         ),
     )
     import_key: Mapped[str | None] = mapped_column(Text)
+
+    moderation_hold: Mapped[bool] = mapped_column(server_default="false")
 
 class CollectionPin(Base):
     __tablename__ = "collection_pins"
