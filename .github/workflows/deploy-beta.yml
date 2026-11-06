@@ -27,7 +27,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v3
 
-      - name: Verify beta SSH access
+      - name: Deploy selected commit to beta
         run: |
           gcloud compute ssh pinlite-next-beta \
             --project=pinlite-510610 \
@@ -35,4 +35,4 @@ jobs:
             --tunnel-through-iap \
             --ssh-key-expire-after=10m \
             --quiet \
-            --command="hostname; id -un"
+            --command="sudo -n /usr/local/sbin/deploy-pinlite-next-beta $GITHUB_SHA"
