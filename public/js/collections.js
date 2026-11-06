@@ -300,6 +300,7 @@
 
     ownedCollections = [];
     folders.replaceChildren();
+    get("create-first-collection").hidden = true;
     saveStatus.textContent = "";
     updateSaveControls();
 
@@ -321,7 +322,8 @@
       if (version !== accountVersion) return;
 
       ownedCollections = result.collections;
-
+      get("create-first-collection").hidden = ownedCollections.length !== 0;
+      
       const roots = ownedCollections.filter(
         collection => collection.parent_id === null
       );
