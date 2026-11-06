@@ -16,8 +16,10 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/js/themes.js"></script>
     <script src="/static/js/settings.js" defer></script>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
     <script src="/static/js/masonry.js" defer></script>
     <script src="/static/js/collections.js" defer></script>
     <script src="/static/js/create-pin.js" defer></script>
@@ -32,7 +34,7 @@
     <header>
         <div class="inner">
             <a href="/">
-                <h2 class="title"><img src="static/img/favicon.png" /> PinLite 2.0 <sup>(beta)</sup></h2>
+                <h2 class="title"><img src="static/img/favicon.png" />PinLite 2.0 <sup>(beta)</sup></h2>
             </a>
             <div class="header-nav">
                 <a href="/?view=my-pins"></a><button type="button" id="saved-pins" title="My pins"><i class="icon pushpin"></i></button>
@@ -111,14 +113,15 @@
         </section>
         <section id="detail" hidden>
             <button id="back">Back</button>
-            <div class="detail-card">
-                <div class="inner">
+            <div class="detail-card panel">
+                <div class="inner left">
                     <h2 id="detail-title"></h2>
+                    <hr>
                     <input id="pin-edit-title" form="pin-edit-form" type="text" maxlength="300" required hidden>
-                    <p id="detail-description"></p>
+                    <div class="panel inset"><p id="detail-description"></p></div>
+                    
                     <textarea id="pin-edit-description" form="pin-edit-form" maxlength="10000" rows="5" hidden></textarea>
                     <p id="detail-tags"></p>
-
                     <div id="pin-edit-tags-field" hidden>
                         <label for="pin-edit-tags">Tags</label><br>
                         <input id="pin-edit-tags" form="pin-edit-form" type="text" maxlength="2000"
@@ -126,8 +129,7 @@
                         <small>Separate tags with commas (maximum 20 tags)</small>
                     </div>
                     <p id="pin-visibility-row" hidden>
-
-                        <span id="pin-visibility"></span>
+                        <i id="pin-visibility" class="icon"></i>
                         <select id="pin-edit-visibility" form="pin-edit-form" hidden>
                             <option value="private">Private</option>
                             <option value="public">Public</option>
@@ -144,38 +146,33 @@
                     </div>
                     <p id="detail-status" role="status"></p>
                     <hr>
-
                     <div class="favorites-panel">
-                        <button id="save-pin" class="green" type="button" hidden>Save</button>
+                        <button id="save-pin" class="green" type="button" hidden>Add</button>
                         <span id="pin-folder-control" hidden>
-                            <label for="pin-folder">to</label>
                             <select id="pin-folder"></select>
                         </span>
                     </div>
-
                     <p id="pin-save-status" role="status"></p>
-
+                    <hr>
                     <div class="links-panel">
                         <div class="links">
                             <a id="download-pin" hidden><button class="blue" type="button">Download</button></a>
                             <a id="download-video" hidden><button type="button">Download video</button></a>
                             <a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Visit source</a>
-                            <button id="hide-pin" type="button" hidden>Hide this pin</button>
                             <button id="report-pin" class="red" type="button" hidden>Report</button>
-                            <button id="appeal-pin" type="button" hidden>Appeal community label</button>
                         </div>
                     </div>
-                    <button id="detail-retry" hidden>Retry detail</button>
                 </div>
-                <hr>
-                <div class="image-wrapper">
-                    <p id="ai-label" hidden>
-                        <strong>Community-flagged as AI</strong>
-                        <br>
-                        <small>Based on user reports. Not automatically verified</small>
-                    </p>
-                    <img id="detail-image" alt="">
-                    <video id="detail-video" controls playsinline preload="none" hidden></video>
+                <div class="inner right">
+                    <div class="image-wrapper panel inset">
+                        <p id="ai-label" hidden>
+                            <strong>Community-flagged as AI</strong>
+                            <br>
+                            <small>Based on user reports. Not automatically verified</small>
+                        </p>
+                        <img id="detail-image" alt="">
+                        <video id="detail-video" controls playsinline preload="none" hidden></video>
+                    </div>
                 </div>
             </div>
             <section id="related-pins" hidden>
@@ -272,7 +269,6 @@
                 </div>
             </form>
         </dialog>
-
         <dialog id="settings-dialog" class="panel">
             <h2 id="settings-title">Display settings</h2>
             <hr>
@@ -302,7 +298,6 @@
                 <button type="submit">Done</button>
             </form>
         </dialog>
-
         <dialog id="account-settings-dialog" class="panel">
             <h2 id="account-settings-title">Account settings</h2>
             <hr>
@@ -354,7 +349,6 @@
                 <button type="submit">Done</button>
             </form>
         </dialog>
-
         <dialog id="report-dialog" class="panel" aria-labelledby="report-title">
             <h2 id="report-title">Report pin</h2>
             <hr>
@@ -389,7 +383,6 @@
         <div id="loading-indicator" hidden>
             <img src="loading.gif" />
         </div>
-
         <div id="grid" class="grid"></div>
         <div id="sentinel">
             <p id="status" role="status"></p><button id="load-more" hidden>Load more</button>

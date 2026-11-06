@@ -33,7 +33,10 @@
     const names = pin.tags || [];
     get("detail-title").textContent = pin.title;
     get("detail-description").textContent = pin.description;
-    get("pin-visibility").textContent = pin.moderation_hold
+    get("pin-visibility").classList.add(pin.moderation_hold
+      ? "delete"
+      : pin.visibility);
+    get("pin-visibility").title = pin.moderation_hold
       ? "Private - moderation hold"
       : pin.visibility;
 

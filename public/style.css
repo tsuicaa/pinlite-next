@@ -55,6 +55,7 @@ input {
 }
 
 .panel {
+  position: relative;
   background-color: #C0C0C0;
   border: 1px solid #000;
   border-top-color: #C3C3C3;
@@ -82,9 +83,9 @@ input {
   border: 1px solid #000;
   border-top-color: #000;
   border-left-color: #000;
-  border-right-color: #C3C3C3;
-  border-bottom-color: #C3C3C3;
-  padding: 12px;
+  border-right-color: #fff;
+  border-bottom-color: #fff;
+  padding: 8px;
 }
 
 .panel.inset:before {
@@ -155,7 +156,6 @@ dialog .panel {
 
 header {
   position: fixed;
-  height: 60px;
   top: 0;
   right: 0;
   width: 100%;
@@ -179,12 +179,16 @@ header .inner{
 }
 
 header .title {
-  margin: .5em 0;
+  margin: 2px 0;
   font-weight: bold;
 }
 
 header a {
   text-decoration: none;
+}
+
+header hr {
+  margin: 0;
 }
 
 header .title sup{
@@ -365,45 +369,35 @@ button:disabled {
 }
 
 .detail-card { 
-  margin: 16px 0; 
-  padding-bottom: 10px;
-  border: 1px solid #000;
-  border-top-color: #eee;
-  border-left-color: #eee;
-  border-right-color: #9A9A9A;
-  border-bottom-color: #9A9A9A;
+  margin: 16px 0;
+  display: grid;
+  grid-template-columns: 1fr; 
+  gap: 20px;
 }
 
-.detail-card .inner {
-  padding: 8px;
-  padding-bottom: 22px;
+@media (min-width: 768px) {
+  .detail-card {
+    grid-template-columns: 35% 1fr; 
+    align-items: start;
+  }
 }
 
-.detail-card .favorites-panel {
-  float: left;
-}
 
-.detail-card .links-panel {
-  float: right;
+#detail-tags a {
+  background: #eee;
+  padding: 2px;
 }
-
 
 #detail .image-wrapper { 
   display: block; 
   width: 100%; 
   height: auto; 
   position: relative;
+  padding: 0;
 }
 
 .image-wrapper > img { 
-  max-width: 100%; 
-  max-height: 70vh;
-  border-top-style: solid;
-  border-bottom-style: solid;
-  border-top-width: 1px;
-  border-bottom-width: 1px;
-  border-top-color: #eee;
-  border-bottom-color: #9A9A9A;
+  width: 100%; 
   display: block;
   margin: 0 auto;
 }
@@ -459,6 +453,18 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.favorites-panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  justify-items: start;
+}
+
+.favorites-panel select, .favorites-panel span {
+  height: 100%;
+  width: 100%;
 }
 
 #feed-heading {
@@ -766,7 +772,7 @@ progress::-moz-progress-bar {
   background: #00007B;
 }
 
-#create-pin-form button[type="submit"], #pinterest-import-start, #create-pin-open {
+#create-pin-form button[type="submit"], #pinterest-import-start, #create-pin-open, #save-pin {
   float: right;
   height: 43px;
   display: grid;
@@ -777,6 +783,9 @@ progress::-moz-progress-bar {
   font-weight: bold;
 }
 
+#save-pin {
+  float: inherit;
+}
 
 #pinterest-preview-result h3 {
   text-align: left;
