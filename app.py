@@ -13,7 +13,7 @@ from models import Collection, CollectionPin, Media, Pin, User, RequestLimit, Ta
 
 from uuid import uuid4
 from images import prepare_image
-from moderation import resolve_reports
+from moderation import resolve_reports, release_pin_hold
 from storage import image_url, put_image, delete_images, read_image
 
 import click
@@ -1737,15 +1737,11 @@ def resolve_pin_reports(pin_id, action):
 @app.cli.command("clear-pin-hold")
 @click.argument("pin_id", type=click.IntRange(1, 9223372036854775807))
 def clear_pin_hold(pin_id):
-    with Session.begin() as db:
-        pin = db.get(Pin, pin_id, with_for_update=True)
-        if pin is None:
-            raise click.ClickException("Pin not found")
+    changed = release_pin_hold(pin_id)
+    if changed is None:
+        raise click.ClickException("Pin not found")
+    if not changed:
+        click.echo("This pin isn't under moderation hold")
+        return
 
-        if not pin.moderation_hold:
-            click.echo("This pin is not under moderation hold")
-            return
-
-        pin.moderation_hold = False
-
-    click.echo(f"Cleared moderation hold on pin {pin_id}. The pin is still private.")
+    click.echo(f"Cleared moderation hold on pin {pin_id} (pin is still private)")

@@ -24,3 +24,14 @@ def resolve_reports(pin_id, action):
             pin.moderation_hold = True
 
         return resolved
+
+def release_pin_hold(pin_id):
+    with Session.begin() as db:
+        pin = db.get(Pin, pin_id, with_for_update=True)
+        if pin is None:
+            return None
+        if not pin.moderation_hold:
+            return False
+
+        pin.moderation_hold = False
+        return True

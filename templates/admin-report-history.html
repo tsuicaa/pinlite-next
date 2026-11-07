@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PinLite Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <main>
+        <h1>Moderation history</h1>
+        <p><a href="{{ url_for('admin.reports') }}">Back to pending reports</a></p>
+
+        <section class="panel">
+            <h2>Active holds</h2>
+            {% for pin in holds %}
+            <p>{{ pin.title }} | Pin #{{ pin.id }}</p>
+            <form method="post" action="{{ url_for('admin.clear_report_hold', pin_id=pin.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit">Clear hold</button>
+            </form>
+            {% else %}
+            <p>No active holds.</p>
+            {% endfor %}
+            {% if holds | length == 50 %}<p>Showing max 50 holds</p>{% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Resolved reports</h2>
+            {% for report in resolved %}
+            <p>
+                {{ report.title }} · Pin #{{ report.pin_id }} ·
+                {{ "Dismissed" if report.status == "dismissed" else "Action taken" }}
+                <br>
+                {{ report.reason | replace('_', ' ') }} ·
+                Reported {{ report.created_at.strftime('%Y-%m-%d %H:%M %Z') }}
+            </p>
+            {% if report.note %}<p>{{ report.note }}</p>{% endif %}
+            {% else %}
+            <p>No resolved reports</p>
+            {% endfor %}
+            {% if resolved | length == 50 %}<p>Showing up to 50 resolved reports</p>{% endif %}
+        </section>
+    </main>
+</body>
+
+</html>

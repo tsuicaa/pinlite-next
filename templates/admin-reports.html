@@ -12,7 +12,7 @@
     <main>
         <h1>Pending reports</h1>
         <p><a href="{{ url_for('admin.overview') }}">Back to admin</a></p>
-
+        <a href="{{ url_for('admin.report_history') }}">Moderation history</a>
         {% for group in report_groups %}
         {% set pin = group[0] %}
         <section class="panel">

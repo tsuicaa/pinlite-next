@@ -6,7 +6,7 @@ from models import Pin, PinReport, User, Media
 from storage import image_url
 from secrets import compare_digest, token_urlsafe
 
-from moderation import resolve_reports
+from moderation import resolve_reports, release_pin_hold
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -246,3 +246,57 @@ def read_snapshot(filename, stale_after_minutes):
         return snapshot
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+@admin.get("/reports/history")
+def report_history():
+    with Session() as db:
+        holds = db.execute(
+            select(Pin.id, Pin.title)
+            .where(Pin.moderation_hold.is_(True))
+            .order_by(Pin.id.desc())
+            .limit(50)
+        ).all()
+
+        resolved = db.execute(
+            select(
+                Pin.id.label("pin_id"),
+                Pin.title,
+                PinReport.reason,
+                PinReport.note,
+                PinReport.status,
+                PinReport.created_at,
+            )
+            .join(PinReport, PinReport.pin_id == Pin.id)
+            .where(PinReport.status.in_(("dismissed", "actioned")))
+            .order_by(
+                PinReport.created_at.desc(),
+                PinReport.pin_id.desc(),
+                PinReport.reporter_id.desc(),
+            )
+            .limit(50)
+        ).all()
+
+    return render_template(
+        "admin-report-history.html", 
+        holds=holds, 
+        resolved=resolved,
+        csrf_token=admin_csrf_token(),
+    ), 200, {"Cache-Control": "no-store"}
+
+@admin.post("/reports/<int:pin_id>/clear-hold")
+def clear_report_hold(pin_id):
+    require_admin_csrf()
+    if not 0 < pin_id <= 9223372036854775807:
+        abort(404)
+
+    changed = release_pin_hold(pin_id)
+    if changed is None:
+        abort(404)
+
+    if changed:
+        current_app.logger.warning(
+            "Moderation: admin=%s pin=%s action=clear_hold",
+            session["user_id"], pin_id,
+        )
+
+    return redirect(url_for("admin.report_history"), code=303)
