@@ -14,7 +14,9 @@
     const open = get("pinterest-import-open");
     const close = get("pinterest-import-close");
     open.addEventListener("click", () => dialog.showModal());
-    close.addEventListener("click", () => dialog.close());
+    close.addEventListener("click", () => {
+        if (stop.hidden) dialog.close();
+    });
 
     dialog.addEventListener("cancel", event => {
         if (!stop.hidden) event.preventDefault();
@@ -22,20 +24,33 @@
 
     const progress = get("pinterest-import-progress");
 
-    document.addEventListener("account-change", event => {
+    function resetImportDialog() {
         request?.abort();
         request = null;
-        form.hidden = !event.detail;
-        result.hidden = true;
-        submit.disabled = false;
-        status.textContent = "";
         preview = null;
         stopping = false;
+
+        form.reset();
+        status.textContent = "";
+        result.hidden = true;
+        get("pinterest-preview-name").textContent = "";
+        get("pinterest-preview-count").textContent = "";
+        get("pinterest-preview-sections").replaceChildren();
+
+        submit.disabled = false;
         start.disabled = false;
+        stop.disabled = false;
         stop.hidden = true;
-        open.hidden = !event.detail;    
-        close.disabled = false;
         progress.hidden = true;
+        progress.removeAttribute("value");
+    }
+
+    dialog.addEventListener("close", resetImportDialog);
+
+    document.addEventListener("account-change", event => {
+        resetImportDialog();
+        form.hidden = !event.detail;
+        open.hidden = !event.detail;
 
         if (!event.detail) dialog.close();
     });
@@ -94,8 +109,8 @@
             });
 
             const board = await response.json();
-            preview = null;
             if (controller.signal.aborted) return;
+            preview = null;
             if (!response.ok) {
                 throw new Error(board.error || "Couldn't preview the board");
             }

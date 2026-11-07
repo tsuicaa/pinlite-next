@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode, urlsplit, quote, unquote
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from images import prepare_image
 
@@ -62,14 +62,22 @@ def board_path(value):
         valid = False
 
     match = re.fullmatch(
-        r"/([A-Za-z0-9_-]+)/([A-Za-z0-9_-]+)/?", url.path
+        r"/([A-Za-z0-9_-]+)/([^/]+)/?", url.path
     ) if valid else None
 
     if match is None:
-        raise BoardURLError("Use the full Pinterest board URL: /username/board/.")
+        raise BoardURLError("Use the full Pinterest board URL (/username/board/)")
 
-    username, slug = match.groups()
-    return username, slug, f"/{username}/{slug}/"
+    username, encoded_slug = match.groups()
+    try:
+        slug = unquote(encoded_slug, errors="strict")
+    except UnicodeDecodeError:
+        raise BoardURLError("Invalid encoding in Pinterest board URL") from None
+
+    if slug in (".", "..") or "/" in slug or "\\" in slug or not slug.isprintable():
+        raise BoardURLError("Invalid Pinterest board name")
+
+    return username, slug, f"/{username}/{quote(slug, safe='')}/"
 
 
 def resource(name, source, options):
