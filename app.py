@@ -199,7 +199,7 @@ def public_pins():
         label_match = label_match | func.array_position(
             compact_labels, compact_query
         ).is_not(None)
-        
+
         rank = case((direct_match, 1), else_=0)
 
         query = (
@@ -1363,14 +1363,16 @@ def import_pinterest_section():
         return jsonify(error="Expected JSON object"), 400
 
     pin_visibility = data.get("pin_visibility", "private")
-
     if pin_visibility not in ("public", "private"):
         return jsonify(error="Invalid pin visibility"), 400
 
     use_section_tags = data.get("use_section_tags", False)
-
     if not isinstance(use_section_tags, bool):
         return jsonify(error="use_section_tags must be true or false"), 400
+
+    filter_section_pins = data.get("filter_section_pins", False)
+    if not isinstance(filter_section_pins, bool):
+        return jsonify(error="Invalid section filter"), 400
 
     url = data.get("url")
     section_id = data.get("section_id")
@@ -1404,7 +1406,7 @@ def import_pinterest_section():
             ).casefold()[:80].strip()
 
         page = board_pin_page(
-            source, board["id"], section_id=section_id, cursor=cursor
+            source, board["id"], section_id=section_id, cursor=cursor, filter_section_pins=filter_section_pins
         )
 
         reported = board["reported_pin_count"]
@@ -1419,7 +1421,7 @@ def import_pinterest_section():
             and len(page["pins"]) < reported
         ):
             try:
-                retry_page = board_pin_page(source, board["id"])
+                retry_page = board_pin_page(source, board["id"], filter_section_pins=filter_section_pins)
             except BoardPreviewError:
                 pass
             else:

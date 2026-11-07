@@ -816,6 +816,10 @@ progress::-moz-progress-bar {
   text-align: left;
 }
 
+#pinterest-preview-sections {
+  list-style: none;
+}
+
 #account-usage progress {
   display: block;
   width: 100%;

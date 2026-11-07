@@ -171,21 +171,25 @@ def preview_board(value):
         ),
         "has_more_pins": bool(bookmark and bookmark != "-end-"),
         "sections": [
-            {"id": str(row["id"]), "name": row.get("title") or "Untitled section"}
+            {
+                "id": str(row["id"]),
+                "name": row.get("title") or "Untitled section",
+                "pin_count": row.get("pin_count"),
+            }
             for row in rows(sections)
             if re.fullmatch(r"[0-9]{1,30}", str(row.get("id", "")))
         ],
         "has_more_sections": bool(section_bookmark and section_bookmark != "-end-"),
     }
 
-def board_pin_page(source, board_id, *, section_id=None, cursor=None):
+def board_pin_page(source, board_id, *, section_id=None, cursor=None, filter_section_pins=False):
     options = {"field_set_key": "react_grid_pin", "page_size": 25}
 
     if section_id is None:
         name = "BoardFeedResource"
         options.update(
             board_id=board_id,
-            filter_section_pins=False,
+            filter_section_pins=filter_section_pins,
             prepend=False,
         )
     else:

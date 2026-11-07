@@ -107,7 +107,15 @@
 
             const sections = board.sections.map(section => {
                 const item = document.createElement("li");
-                item.textContent = section.name;
+                const label = document.createElement("label");
+                const checkbox = document.createElement("input");
+
+                checkbox.type = "checkbox";
+                checkbox.value = section.id;
+                checkbox.checked = true;
+
+                label.append(checkbox, ` ${section.name} (${section.pin_count ?? "unknown"})`);
+                item.append(label);
                 return item;
             });
 
@@ -142,24 +150,17 @@
         if (!preview || request) return;
 
         const board = preview;
-        const total = Number(board.reported_pin_count);
-        const hasTotal = Number.isSafeInteger(total) && total > 0;
 
-        if (hasTotal) {
-            progress.max = total;
-            progress.value = 0;
-        } else {
-            progress.removeAttribute("value");
-        }
 
         function updateProgress(count) {
             if (hasTotal) progress.value = Math.min(count, total);
         }
 
-        const controller = new AbortController();
-        request = controller;
-        progress.hidden = false;
-        stopping = false;
+        const selectedIds = new Set(
+            [...get("pinterest-preview-sections").querySelectorAll("input:checked")]
+                .map(checkbox => checkbox.value)
+        );
+        const selectedSections = board.sections.filter(section => selectedIds.has(section.id));
 
         const options = {
             url: board.url,
@@ -169,10 +170,38 @@
             use_section_tags: get("pinterest-use-section-tags").checked,
         };
 
-        const feeds = [
-            ...board.sections,
-            { id: null, name: "Main board" },
-        ];
+        if (board.sections.length && selectedSections.length === 0) {
+            status.textContent = "Select at least one section to import";
+            return;
+        }
+
+        const controller = new AbortController();
+        request = controller;
+        progress.hidden = false;
+        stopping = false;
+
+        const feeds = [...selectedSections];
+        if (selectedSections.length === board.sections.length) {
+            feeds.push({ id: null, name: "Main board" });
+        }
+
+        const fullBoard = selectedSections.length === board.sections.length;
+        const sectionCounts = selectedSections.map(section => section.pin_count);
+        const total = fullBoard
+            ? Number(board.reported_pin_count)
+            : sectionCounts.every(count =>
+                count != null && Number.isSafeInteger(Number(count)) && Number(count) >= 0
+            )
+                ? sectionCounts.reduce((sum, count) => sum + Number(count), 0)
+                : 0;
+        const hasTotal = Number.isSafeInteger(total) && total > 0;
+
+        if (hasTotal) {
+            progress.max = total;
+            progress.value = 0;
+        } else {
+            progress.removeAttribute("value");
+        }
 
         let added = 0;
         let linked = 0;
@@ -220,7 +249,7 @@
                     const page = await readImportResult(response, uploaded => {
                     if (request !== controller || stopping) return;
 
-                    updateProgress(added + uploaded);
+                    updateProgress(fetched + uploaded);
 
                     status.textContent =
                         `Importing ${feed.name}... ${added} pins saved | ${uploaded} images uploaded`;
@@ -232,7 +261,7 @@
 
                     added += page.added;
                     fetched += page.fetched ?? 0;
-                    updateProgress(added);
+                    updateProgress(fetched);
                     linked += page.linked;
                     failedImages += page.failed_images ?? 0;
 
