@@ -25,11 +25,23 @@
                 <dd>{{ pins.get('private', 0) }}</dd>
                 <dt><a href="{{ url_for('admin.reports') }}">Pending reports</a></dt>
                 <dd>{{ pending_reports }}</dd>
+                <dt>Signups (last 7 days)</dt>
+                <dd>{{ recent_users }}</dd>
+                <dt>Pins created (last 7 days)</dt>
+                <dd>{{ recent_pins }}</dd>
             </dl>
         </section>
         <section class="panel">
             <h2>Users</h2>
-
+            <form method="get" action="{{ url_for('admin.overview') }}">
+                <label for="admin-user-search">Find a user</label>
+                <input id="admin-user-search" name="user_q" type="search" maxlength="256"
+                    value="{{ user_search }}" placeholder="Email, name">
+                <button type="submit">Search</button>
+                {% if user_search %}
+                <a href="{{ url_for('admin.overview') }}">Clear</a>
+                {% endif %}
+            </form>
             {% if accounts %}
             <div class="admin-grid admin-grid--users" role="table" aria-label="Users">
                 <div class="admin-grid-row" role="row">
@@ -74,10 +86,10 @@
             {% if before or next_before %}
             <p>
                 {% if before %}
-                <a href="{{ url_for('admin.overview') }}">Newest accounts</a>
+                <a href="{{ url_for('admin.overview', user_q=user_search or none) }}">Newest accounts</a>
                 {% endif %}
                 {% if next_before %}
-                <a href="{{ url_for('admin.overview', before=next_before) }}">Older accounts</a>
+                <a href="{{ url_for('admin.overview', before=next_before, user_q=user_search or none) }}">Older accounts</a>
                 {% endif %}
             </p>
             {% endif %}
@@ -85,7 +97,7 @@
         <section class="panel">
             <h2>Server</h2>
             {% if health %}
-            <p>Collected {{ health.collected_at }}{% if health.stale %}. Stale{% endif %}</p>
+            <p>Collected {{ health.collected_at }}{% if health.stale %} | Stale{% endif %}</p>
             <dl>
                 <dt>CPU usage</dt>
                 <dd>{{ health.cpu_percent }}%</dd>
@@ -109,10 +121,10 @@
                 {% for name, unit in health.units.items() %}
                 <div class="admin-grid-row" role="row">
                     <div role="cell">{{ name }}</div>
-                    <div role="cell">{{ unit.get('ActiveState') or '—' }}</div>
-                    <div role="cell">{{ unit.get('Result') or '—' }}</div>
-                    <div role="cell">{{ unit.get('LastTriggerUSec') or unit.get('ExecMainExitTimestamp') or '—' }}</div>
-                    <div role="cell">{{ unit.get('NextElapseUSecRealtime') or '—' }}</div>
+                    <div role="cell">{{ unit.get('ActiveState') or '-' }}</div>
+                    <div role="cell">{{ unit.get('Result') or '-' }}</div>
+                    <div role="cell">{{ unit.get('LastTriggerUSec') or unit.get('ExecMainExitTimestamp') or '-' }}</div>
+                    <div role="cell">{{ unit.get('NextElapseUSecRealtime') or '-' }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -124,7 +136,7 @@
             <h2>R2 bucket</h2>
 
             {% if r2 %}
-            <p>{{ r2.bucket }} · Collected {{ r2.collected_at }}{% if r2.stale %} · Stale{% endif %}</p>
+            <p>{{ r2.bucket }} | Collected {{ r2.collected_at }}{% if r2.stale %} | Stale{% endif %}</p>
 
             <dl class="admin-metrics">
                 {% if r2.storage %}

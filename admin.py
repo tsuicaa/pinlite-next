@@ -66,8 +66,27 @@ def overview():
         .order_by(User.id.desc())
         .limit(26)
     )
+    user_search = request.args.get("user_q", "").strip()
+    if len(user_search) > 256:
+        abort(400)
+
+    if user_search:
+        matches = (
+            User.email.icontains(user_search, autoescape=True)
+            | User.display_name.icontains(user_search, autoescape=True)
+        )
+
+        if user_search.isascii() and user_search.isdecimal():
+            user_id = int(user_search)
+            if 0 < user_id <= 9223372036854775807:
+                matches = matches | (User.id == user_id)
+
+        user_query = user_query.where(matches)
+
     if before is not None:
         user_query = user_query.where(User.id < before)
+
+    recent_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
     with Session() as db:
         users = db.scalar(select(func.count()).select_from(User))
@@ -103,6 +122,15 @@ def overview():
             .group_by(owned_media.c.creator_id)
         ).all())
 
+        recent_users = db.scalar(
+            select(func.count()).select_from(User)
+            .where(User.created_at >= recent_cutoff)
+        )
+        recent_pins = db.scalar(
+            select(func.count()).select_from(Pin)
+            .where(Pin.created_at >= recent_cutoff)
+        )
+
     return render_template(
         "admin.html", 
         users=users, 
@@ -116,6 +144,9 @@ def overview():
         csrf_token=admin_csrf_token(),
         health=read_snapshot("status.json", 3),
         r2=read_snapshot("r2.json", 35),
+        user_search=user_search,
+        recent_users=recent_users,
+        recent_pins=recent_pins,
     ), 200, {"Cache-Control": "no-store"}
 
 @admin.get("/reports")
