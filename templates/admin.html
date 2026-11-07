@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PinLite Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <h1>PinLite Admin</h1>
+        <p><a href="/">Back to PinLite</a></p>
+        <section class="panel">
+            <h2>Overview</h2>
+            <dl>
+                <dt>Users</dt><dd>{{ users }}</dd>
+                <dt>Total pins</dt><dd>{{ pins.values() | sum }}</dd>
+                <dt>Public pins</dt><dd>{{ pins.get('public', 0) }}</dd>
+                <dt>Private pins</dt><dd>{{ pins.get('private', 0) }}</dd>
+                <dt>Pending reports</dt><dd>{{ pending_reports }}</dd>
+            </dl>
+        </section>
+    </main>
+</body>
+</html>

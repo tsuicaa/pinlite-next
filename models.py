@@ -20,6 +20,7 @@ class User(Base):
     )
     password_hash: Mapped[str | None] = mapped_column(Text)
     display_name: Mapped[str] = mapped_column(String(100))
+    is_admin: Mapped[bool] = mapped_column(server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

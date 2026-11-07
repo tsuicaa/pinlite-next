@@ -28,9 +28,12 @@ from hashlib import sha256
 
 import json
 
+from admin import admin
+
 DUMMY_PASSWORD_HASH = generate_password_hash("login-placeholder")
 
 app = Flask(__name__, static_folder="public", static_url_path="/static")
+app.register_blueprint(admin)
 app.config.update(
     SECRET_KEY=os.environ["SECRET_KEY"],
     SESSION_COOKIE_HTTPONLY=True,
