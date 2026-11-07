@@ -3,7 +3,7 @@ from urllib.parse import quote, urlsplit
 from datetime import timedelta, datetime, timezone
 
 from flask import Flask, jsonify, request, session as login_session, Response, stream_with_context
-from sqlalchemy import delete, select, func, update
+from sqlalchemy import delete, select, func, update, case, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,7 +13,7 @@ from models import Collection, CollectionPin, Media, Pin, User, RequestLimit, Ta
 
 from uuid import uuid4
 from images import prepare_image
-from storage import image_url, put_image, delete_images
+from storage import image_url, put_image, delete_images, read_image
 
 import click
 
@@ -149,12 +149,19 @@ def public_pins():
     if len(search) > 200:
         return jsonify(error="Search must be max 200 characters"), 400
     before = request.args.get("before")
+    before_rank = 1
 
     if before is not None:
         try:
+            if search and ":" in before:
+                rank_text, before = before.split(":", 1)
+                if rank_text not in ("0", "1"):
+                    raise ValueError
+                before_rank = int(rank_text)
+
             before = int(before)
             if not 0 < before <= 9223372036854775807:
-                raise ValueError()
+                raise ValueError
         except ValueError:
             return jsonify(error="Invalid pagination cursor"), 400
 
@@ -162,7 +169,6 @@ def public_pins():
         select(Pin, Media)
         .join(Media, Pin.media_id == Media.id)
         .where(Pin.visibility == "public")
-        .order_by(Pin.id.desc())
         .limit(31)
     )
 
@@ -175,10 +181,24 @@ def public_pins():
             .where(Tag.search_document.bool_op("@@")(terms))
         )
 
-        query = query.where(
+        direct_match = (
             Pin.search_document.bool_op("@@")(terms)
             | Pin.id.in_(matching_tag_pins)
         )
+        label_match = (
+            (Media.discovery_labels != "")
+            & func.to_tsvector("simple", Media.discovery_labels).bool_op("@@")(terms)
+        )
+        rank = case((direct_match, 1), else_=0)
+
+        query = (
+            query.add_columns(rank.label("match_rank"))
+            .where(direct_match | label_match)
+            .order_by(rank.desc(), Pin.id.desc())
+        )
+
+        if before is not None:
+            query = query.where(tuple_(rank, Pin.id) < (before_rank, before))
 
     if tag:
         tagged_pins = (
@@ -188,17 +208,24 @@ def public_pins():
         )
         query = query.where(Pin.id.in_(tagged_pins))
 
-    if before is not None:
-        query = query.where(Pin.id < before)
+    if not search:
+        query = query.order_by(Pin.id.desc())
+        if before is not None:
+            query = query.where(Pin.id < before)
 
     with Session() as session:
         rows = session.execute(query).all()
         has_more = len(rows) > 30
         rows = rows[:30]
 
-        pins = [serialize_pin(pin, media) for pin, media in rows]
+        pins = [serialize_pin(row[0], row[1]) for row in rows]
+        next_cursor = None
 
-    return jsonify(pins = pins, next_cursor=pins[-1]["id"] if has_more else None,)
+        if has_more:
+            last_id = pins[-1]["id"]
+            next_cursor = f"{rows[-1].match_rank}:{last_id}" if search else last_id
+
+    return jsonify(pins=pins, next_cursor=next_cursor)
 
 @app.get("/api/pins/<int:pin_id>")
 def pin_detail(pin_id):
@@ -1092,6 +1119,56 @@ def cleanup_media(apply):
         removed += 1
 
     click.echo(f"Removed {removed} unused media records")
+
+@app.cli.command("label-public-images")
+@click.option("--limit", type=click.IntRange(1, 25), default=5, show_default=True)
+def label_public_images(limit):
+    from google.cloud import vision
+
+    public_pin = (
+        select(Pin.id)
+        .where(Pin.media_id == Media.id, Pin.visibility == "public")
+        .exists()
+    )
+
+    with Session() as db:
+        images = db.execute(
+            select(Media.id, Media.thumbnail_key)
+            .where(
+                Media.storage_kind == "hosted",
+                Media.thumbnail_key.is_not(None),
+                Media.discovery_labels.is_(None),
+                public_pin,
+            )
+            .order_by(Media.id.desc())
+            .limit(limit)
+        ).all()
+
+    if not images:
+        click.echo("No unlabeled public thumbnails found")
+        return
+
+    vision_client = vision.ImageAnnotatorClient()
+
+    for media_id, key in images:
+        result = vision_client.label_detection(
+            image=vision.Image(content=read_image(key)),
+            retry=None,
+            timeout=15,
+        )
+        if result.error.message:
+            raise click.ClickException(f"Media {media_id}: {result.error.message}")
+
+        labels = normalize_tags([
+            label.description
+            for label in result.label_annotations
+            if label.score >= 0.75 and 1 <= len(label.description.strip()) <= 80
+        ][:5])
+
+        with Session.begin() as db:
+            db.get(Media, media_id).discovery_labels = "\n".join(labels)
+
+        click.echo(f"{media_id}: {', '.join(labels) or '(no labels)'}")
 
 @app.before_request
 def limit_requests():

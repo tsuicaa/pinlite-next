@@ -44,3 +44,9 @@ def delete_images(keys):
     if result.get("Errors"):
         raise RuntimeError("R2 could not delete all requested images")
 
+def read_image(key):
+    body = client.get_object(Bucket=bucket, Key=key)["Body"]
+    try:
+        return body.read()
+    finally:
+        body.close()
