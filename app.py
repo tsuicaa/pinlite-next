@@ -185,10 +185,21 @@ def public_pins():
             Pin.search_document.bool_op("@@")(terms)
             | Pin.id.in_(matching_tag_pins)
         )
+        label_terms = func.websearch_to_tsquery("english", search)
         label_match = (
             (Media.discovery_labels != "")
-            & func.to_tsvector("simple", Media.discovery_labels).bool_op("@@")(terms)
+            & func.to_tsvector("english", Media.discovery_labels).bool_op("@@")(label_terms)
         )
+
+        compact_query = "".join(search.casefold().split())
+        compact_labels = func.string_to_array(
+            func.replace(Media.discovery_labels, " ", ""),
+            "\n",
+        )
+        label_match = label_match | func.array_position(
+            compact_labels, compact_query
+        ).is_not(None)
+        
         rank = case((direct_match, 1), else_=0)
 
         query = (
