@@ -9,37 +9,58 @@
 </head>
 
 <body>
+    <header>
+        <div class="inner">
+            <a href="/admin">
+                <h2 class="title"><img src="../../static/img/favicon.png" />PinLite 2.0 <sup>(beta)</sup> Admin</h2>
+            
+            <div class="header-nav">
+                <a href="{{ url_for('admin.reports') }}">Back to pending reports</a>
+            </div>
+            </a>
+        </div>
+        <hr>
+    </header>
     <main>
-        <h1>Moderation history</h1>
-        <p><a href="{{ url_for('admin.reports') }}">Back to pending reports</a></p>
+        <h2><b>Moderation history</b></h2>
 
         <section class="panel">
             <h2>Active holds</h2>
+            <hr>
             {% for pin in holds %}
-            <p>{{ pin.title }} | Pin #{{ pin.id }}</p>
-            <form method="post" action="{{ url_for('admin.clear_report_hold', pin_id=pin.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit">Clear hold</button>
-            </form>
-            {% else %}
-            <p>No active holds.</p>
+            <div class="report panel">
+                
+                <p>Title: <b>{{ pin.title }}</b></p>
+                <p>Pin #: <b>{{ pin.id }}</b></p>
+                <form method="post" action="{{ url_for('admin.clear_report_hold', pin_id=pin.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit">Clear hold</button>
+                </form>
+            </div>
+                {% else %}
+                <p>No active holds.</p>
+            
             {% endfor %}
             {% if holds | length == 50 %}<p>Showing max 50 holds</p>{% endif %}
         </section>
-
+        <br>
         <section class="panel">
             <h2>Resolved reports</h2>
+            <hr>
             {% for report in resolved %}
-            <p>
-                {{ report.title }} · Pin #{{ report.pin_id }} ·
-                {{ "Dismissed" if report.status == "dismissed" else "Action taken" }}
+            <div class="report panel">
+                
+                    <p>Title: <b>{{ report.title }}</b></p>
+                    <p>Pin #: <b>{{ report.pin_id }}</b></p>
+                    <p>Status: <b>{{ "Dismissed" if report.status == "dismissed" else "Action taken" }}</b></p>
+                    <p>Reason: <b>{{ report.reason | replace('_', ' ') }}</b></p>
+                    Reported {{ report.created_at.strftime('%Y-%m-%d %H:%M %Z') }}
+                
+                {% if report.note %}<p>{{ report.note }}</p>{% endif %}
+                </div>
                 <br>
-                {{ report.reason | replace('_', ' ') }} ·
-                Reported {{ report.created_at.strftime('%Y-%m-%d %H:%M %Z') }}
-            </p>
-            {% if report.note %}<p>{{ report.note }}</p>{% endif %}
-            {% else %}
-            <p>No resolved reports</p>
+                {% else %}
+                <p>No resolved reports</p>
             {% endfor %}
             {% if resolved | length == 50 %}<p>Showing up to 50 resolved reports</p>{% endif %}
         </section>

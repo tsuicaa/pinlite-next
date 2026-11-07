@@ -9,9 +9,20 @@
 </head>
 
 <body>
-    <main>
-        <h1>PinLite Admin</h1>
-        <p><a href="/">Back to PinLite</a></p>
+    <header>
+        <div class="inner">
+            <a href="/admin">
+                <h2 class="title"><img src="static/img/favicon.png" />PinLite 2.0 <sup>(beta)</sup> Admin</h2>
+            
+            <div class="header-nav">
+                <a href="/">Back to PinLite</a>
+            </div>
+            </a>
+        </div>
+        <hr>
+    </header>
+    <main class="admin">
+        <p></p>
         <section class="panel">
             <h2>Overview</h2>
             <dl class="admin-metrics">
@@ -31,6 +42,7 @@
                 <dd>{{ recent_pins }}</dd>
             </dl>
         </section>
+        <br>
         <section class="panel">
             <h2>Users</h2>
             <form method="get" action="{{ url_for('admin.overview') }}">
@@ -57,7 +69,7 @@
                 {% for account in accounts %}
                 <div class="admin-grid-row" role="row">
                     <div role="cell">{{ account.display_name }}</div>
-                    <div role="cell">{{ account.email }}</div>
+                    <div role="cell" id="email">{{ account.email }}</div>
                     <div role="cell">{{ pin_counts.get(account.id, 0) }}</div>
                     <div role="cell">{{ "%.1f" | format((storage_bytes.get(account.id) or 0) / 1048576) }}</div>
                     <div role="cell">{{ "Admin" if account.is_admin else "User" }}</div>
@@ -94,6 +106,8 @@
             </p>
             {% endif %}
         </section>
+        <br>
+        <div class="bottom-panels">
         <section class="panel">
             <h2>Server</h2>
             {% if health %}
@@ -160,6 +174,7 @@
             <p>R2 analytics snapshot unavailable.</p>
             {% endif %}
         </section>
+        </div>
     </main>
 </body>
 

@@ -156,6 +156,9 @@ dialog .panel {
 .icon.share {
   background-image: url("img/share.png");
 }
+.icon.logo {
+  background-image: url("img/favicon.png");
+}
 
 header {
   position: fixed;
@@ -835,8 +838,12 @@ progress::-moz-progress-bar {
   overflow-x: auto;
 }
 
-.admin-grid--users {
-  --columns: minmax(8rem, 1fr) minmax(12rem, 2fr) 4rem 7rem 5rem 8rem;
+.admin-grid--users #email{
+  filter: blur(4px);
+}
+
+.admin-grid--users #email:hover {
+  filter: blur(0px);
 }
 
 .admin-grid--units {
@@ -870,6 +877,11 @@ progress::-moz-progress-bar {
 .admin-metrics dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.admin .bottom-panels {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
 }
 
 @media (max-width: 500px) { 

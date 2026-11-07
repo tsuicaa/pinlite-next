@@ -9,10 +9,22 @@
 </head>
 
 <body>
+    <header>
+        <div class="inner">
+            <a href="/admin">
+                <h2 class="title"><img src="../static/img/favicon.png" />PinLite 2.0 <sup>(beta)</sup> Admin</h2>
+            
+            <div class="header-nav">
+                <a href="{{ url_for('admin.overview') }}">Back to admin</a>
+            </div>
+            </a>
+        </div>
+        <hr>
+    </header>
     <main>
-        <h1>Pending reports</h1>
-        <p><a href="{{ url_for('admin.overview') }}">Back to admin</a></p>
-        <a href="{{ url_for('admin.report_history') }}">Moderation history</a>
+        <h2><b>Pending reports</b></h2>
+        <a href="{{ url_for('admin.report_history') }}"><button type="button">Moderation history</button></a>
+        <hr>
         {% for group in report_groups %}
         {% set pin = group[0] %}
         <section class="panel">
