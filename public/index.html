@@ -192,6 +192,10 @@
             <form id="create-pin-form" hidden>
                 <input id="new-pin-title" type="text" maxlength="300" placeholder="Title">
                 <br><br>
+                <p>
+                    <label for="new-pin-description">Description (optional)</label><br>
+                    <textarea id="new-pin-description" maxlength="10000" rows="4"></textarea>
+                </p>
                 <select id="new-pin-mode">
                     <option value="upload">Upload image</option>
                     <option value="url">Image URL</option>
@@ -226,7 +230,7 @@
                     <label for="new-pin-visibility">Visibility</label>
                     <select id="new-pin-visibility">
                         <option value="private">Private</option>
-                        <option value="public">Public</option>
+                        <option value="public" selected>Public</option>
                     </select>
                 </p>
                 <p>

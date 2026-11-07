@@ -976,6 +976,11 @@ def create_uploaded_pin():
     if not 1 <= len(title) <= 300:
         return jsonify(error="Title must be 1–300 characters"), 400
 
+    description = request.form.get("description", "")
+
+    if len(description) > 10000:
+        return jsonify(error="Description must be max 10000 characters"), 400
+
     source_url = request.form.get("source_url", "").strip() or None
 
     if source_url:
@@ -1050,6 +1055,7 @@ def create_uploaded_pin():
                 creator_id=user_id,
                 media_id=media.id,
                 title=title,
+                description=description.strip(),
                 source_url=source_url,
                 visibility=visibility,
             )

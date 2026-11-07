@@ -10,6 +10,7 @@
     const mode = get("new-pin-mode");
     const file = get("new-pin-file");
     const imageUrl = get("new-pin-image");
+    const description = get("new-pin-description").value;
     const collection = get("new-pin-collection");
     const progress = get("create-pin-progress");
     const dropZone = get("drop-zone");
@@ -299,6 +300,7 @@
             const body = new FormData();
             body.append("image", prepared);
             body.append("title", title);
+            body.append("description", description);
             body.append("source_url", sourceUrl);
             body.append("visibility", visibility);
             body.append("collection_id", collectionId);

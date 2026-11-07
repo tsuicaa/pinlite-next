@@ -685,6 +685,11 @@ dialog::backdrop {
   text-align: left;
 }
 
+#create-pin-form textarea {
+  resize: vertical;
+  width: 100%;
+}
+
 #create-pin-form input, #pinterest-preview-form input[type="text"] {
   width: 100%;
   max-width: 100%;
