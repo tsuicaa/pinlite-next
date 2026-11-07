@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PinLite Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <main>
+        <h1>Pending reports</h1>
+        <p><a href="{{ url_for('admin.overview') }}">Back to admin</a></p>
+
+        {% for group in report_groups %}
+        {% set pin = group[0] %}
+        <section class="panel">
+            <h2>{{ pin.title }}</h2>
+            {% if pin.thumbnail_key %}
+            <img src="{{ image_url(pin.thumbnail_key) }}" alt="" width="120" loading="lazy"
+                referrerpolicy="no-referrer">
+            {% endif %}
+            <p>Pin #{{ pin.pin_id }} · {{ pin.visibility }}</p>
+            {% if pin.visibility == 'public' %}
+            <p><a href="{{ url_for('index', pin=pin.pin_id) }}">Open pin</a></p>
+            {% endif %}
+
+            <ul>
+                {% for report in group %}
+                <li>
+                    <strong>{{ report.reason | replace('_', ' ') }}</strong>
+                    {% if report.note %}<p>{{ report.note }}</p>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+
+            <form method="post" action="{{ url_for('admin.resolve_report_group', pin_id=pin.pin_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <p>These actions resolve all pending reports for this pin</p>
+                <button type="submit" name="action" value="dismiss">Dismiss reports</button>
+                <button type="submit" name="action" value="unpublish" class="red">Unpublish and hold</button>
+            </form>
+        </section>
+        {% else %}
+        <p>No pending reports.</p>
+        {% endfor %}
+    </main>
+</body>
+
+</html>

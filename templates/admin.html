@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PinLite Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
     <main>
         <h1>PinLite Admin</h1>
@@ -13,13 +15,62 @@
         <section class="panel">
             <h2>Overview</h2>
             <dl>
-                <dt>Users</dt><dd>{{ users }}</dd>
-                <dt>Total pins</dt><dd>{{ pins.values() | sum }}</dd>
-                <dt>Public pins</dt><dd>{{ pins.get('public', 0) }}</dd>
-                <dt>Private pins</dt><dd>{{ pins.get('private', 0) }}</dd>
-                <dt>Pending reports</dt><dd>{{ pending_reports }}</dd>
+                <dt>Users</dt>
+                <dd>{{ users }}</dd>
+                <dt>Total pins</dt>
+                <dd>{{ pins.values() | sum }}</dd>
+                <dt>Public pins</dt>
+                <dd>{{ pins.get('public', 0) }}</dd>
+                <dt>Private pins</dt>
+                <dd>{{ pins.get('private', 0) }}</dd>
+                <dt>Pending reports</dt>
+                <dd>{{ pending_reports }}</dd>
+                <dt><a href="{{ url_for('admin.reports') }}">Pending reports</a></dt>
+                <dd>{{ pending_reports }}</dd>
             </dl>
+        </section>
+        <section class="panel">
+            <h2>Users</h2>
+
+            {% if accounts %}
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Display name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Pins</th>
+                        <th scope="col">Storage (MB)</th>
+                        <th scope="col">Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td>{{ account.display_name }}</td>
+                        <td>{{ account.email }}</td>
+                        <td>{{ pin_counts.get(account.id, 0) }}</td>
+                        <td>{{ "%.1f" | format((storage_bytes.get(account.id) or 0) / 1048576) }}</td>
+                        <td>{{ "Admin" if account.is_admin else "User" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No accounts on this page.</p>
+            {% endif %}
+
+            {% if before or next_before %}
+            <p>
+                {% if before %}
+                <a href="{{ url_for('admin.overview') }}">Newest accounts</a>
+                {% endif %}
+                {% if next_before %}
+                <a href="{{ url_for('admin.overview', before=next_before) }}">Older accounts</a>
+                {% endif %}
+            </p>
+            {% endif %}
         </section>
     </main>
 </body>
+
 </html>

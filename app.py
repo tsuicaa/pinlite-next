@@ -13,6 +13,7 @@ from models import Collection, CollectionPin, Media, Pin, User, RequestLimit, Ta
 
 from uuid import uuid4
 from images import prepare_image
+from moderation import resolve_reports
 from storage import image_url, put_image, delete_images, read_image
 
 import click
@@ -1707,28 +1708,14 @@ def list_pin_reports(limit):
 @click.argument("pin_id", type=click.IntRange(1, 9223372036854775807))
 @click.option("--action", type=click.Choice(["dismiss", "unpublish"]), required=True)
 def resolve_pin_reports(pin_id, action):
-    with Session.begin() as db:
-        pin = db.get(Pin, pin_id, with_for_update=True)
-
-        if pin is None:
-            raise click.ClickException("Pin not found")
-
-        resolved = db.execute(
-            update(PinReport)
-            .where(PinReport.pin_id == pin_id, PinReport.status == "pending")
-            .values(status="dismissed" if action == "dismiss" else "actioned")
-        ).rowcount
-
-        if not resolved:
-            click.echo("No pending reports for this pin")
-            return
-
-        if action == "unpublish":
-            pin.visibility = "private"
-            pin.moderation_hold = True
+    resolved = resolve_reports(pin_id, action)
+    if resolved is None:
+        raise click.ClickException("Pin not found")
+    if not resolved:
+        click.echo("No pending reports for this pin")
+        return
 
     click.echo(f"Resolved {resolved} report(s) for pin {pin_id}: {action}")
-
 
 @app.cli.command("clear-pin-hold")
 @click.argument("pin_id", type=click.IntRange(1, 9223372036854775807))
