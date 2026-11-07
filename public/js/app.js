@@ -368,7 +368,7 @@ async function loadRelated(pinId) {
         if (controller.signal.aborted) return;
 
         relatedGrid.append(...result.pins.map(renderPin));
-        relatedcursor = result.next_cursor;
+        relatedCursor = result.next_cursor;
         relatedSection.hidden = !relatedGrid.childElementCount;
         relatedMore.hidden = !relatedCursor;
     } catch {
@@ -388,7 +388,7 @@ async function loadRelated(pinId) {
 document.addEventListener("pin-change", resetRelated);
 
 document.addEventListener("pin-detail", event => {
-    if (event.detail.tags?.length) loadRelated(event.detail.id);
+    loadRelated(event.detail.id);
 });
 
 relatedMore.addEventListener("click", () => {

@@ -1243,62 +1243,75 @@ def related_pins(pin_id):
         return jsonify(error="Pin not found"), 404
 
     before = request.args.get("before")
+    cursor = None
 
     if before is not None:
         try:
-            score, last_id = map(int, before.split(":"))
-            if not (1 <= score <= 20 and 0 < last_id <= 9223372036854775807):
+            group, score, last_id = map(int, before.split(":"))
+            if group not in (0, 1) or not 1 <= score <= 20 or not 0 < last_id <= 9223372036854775807:
                 raise ValueError
+            cursor = (group, score, last_id)
         except ValueError:
             return jsonify(error="Invalid pagination cursor"), 400
 
-    source_tags = select(PinTag.tag_id).where(PinTag.pin_id == pin_id)
-
-    matches = (
-        select(PinTag.pin_id, func.count().label("score"))
-        .where(
-            PinTag.tag_id.in_(source_tags),
-            PinTag.pin_id != pin_id,
-        )
-        .group_by(PinTag.pin_id)
-        .subquery()
-    )
-
-    query = (
-        select(Pin, Media, matches.c.score)
-        .join(matches, matches.c.pin_id == Pin.id)
-        .join(Media, Media.id == Pin.media_id)
-        .where(Pin.visibility == "public")
-        .order_by(matches.c.score.desc(), Pin.id.desc())
-        .limit(13)
-    )
-
-    if before is not None:
-        query = query.where(
-            (matches.c.score < score)
-            | ((matches.c.score == score) & (Pin.id < last_id))
-        )
-
     with Session() as db:
-        source = db.scalar(
-            select(Pin.id).where(
+        source = db.execute(
+            select(Media.id, Media.discovery_labels)
+            .join(Pin, Pin.media_id == Media.id)
+            .where(
                 Pin.id == pin_id,
                 (Pin.visibility == "public")
                 | (Pin.creator_id == login_session.get("user_id")),
             )
-        )
+        ).one_or_none()
 
         if source is None:
             return jsonify(error="Pin not found"), 404
 
+        source_media_id, source_labels = source
+        labels = sorted(set((source_labels or "").splitlines()) - {""})
+
+        source_tags = select(PinTag.tag_id).where(PinTag.pin_id == pin_id)
+        matches = (
+            select(PinTag.pin_id, func.count().label("score"))
+            .where(PinTag.tag_id.in_(source_tags), PinTag.pin_id != pin_id)
+            .group_by(PinTag.pin_id)
+            .subquery()
+        )
+
+        candidate_labels = func.string_to_array(Media.discovery_labels, "\n")
+        label_score = sum(
+            case((func.array_position(candidate_labels, label).is_not(None), 1), else_=0)
+            for label in labels
+        )
+        tag_match = matches.c.score.is_not(None)
+        match_group = case((tag_match, 1), else_=0)
+        match_score = func.coalesce(matches.c.score, label_score)
+
+        query = (
+            select(Pin, Media, match_group, match_score)
+            .join(Media, Media.id == Pin.media_id)
+            .outerjoin(matches, matches.c.pin_id == Pin.id)
+            .where(
+                Pin.visibility == "public",
+                Media.id != source_media_id,
+                tag_match | (label_score >= 2),
+            )
+            .order_by(match_group.desc(), match_score.desc(), Pin.id.desc())
+            .limit(13)
+        )
+
+        if cursor is not None:
+            query = query.where(tuple_(match_group, match_score, Pin.id) < cursor)
+
         rows = db.execute(query).all()
         page = rows[:12]
-        pins = [serialize_pin(pin, media) for pin, media, _ in page]
-
+        pins = [serialize_pin(pin, media) for pin, media, _, _ in page]
         next_cursor = None
+
         if len(rows) > 12:
-            last_pin, _, last_score = page[-1]
-            next_cursor = f"{last_score}:{last_pin.id}"
+            last_pin, _, last_group, last_score = page[-1]
+            next_cursor = f"{last_group}:{last_score}:{last_pin.id}"
 
     return jsonify(pins=pins, next_cursor=next_cursor)
 
