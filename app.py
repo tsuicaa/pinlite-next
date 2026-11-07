@@ -1389,6 +1389,28 @@ def import_pinterest_section():
         page = board_pin_page(
             source, board["id"], section_id=section_id, cursor=cursor
         )
+
+        reported = board["reported_pin_count"]
+        if (
+            cursor is None
+            and section_id is None
+            and not board["sections"]
+            and not board["has_more_sections"]
+            and page["pins"]
+            and page["next_cursor"] is None
+            and isinstance(reported, int)
+            and len(page["pins"]) < reported
+        ):
+            try:
+                retry_page = board_pin_page(source, board["id"])
+            except BoardPreviewError:
+                pass
+            else:
+                if (
+                    retry_page["next_cursor"] is not None
+                    or len(retry_page["pins"]) > len(page["pins"])
+                ):
+                    page = retry_page
     except BoardURLError as error:
         return jsonify(error=str(error)), 400
     except BoardPreviewError as error:
@@ -1396,7 +1418,7 @@ def import_pinterest_section():
 
     if not page["pins"]:
         return jsonify(
-            added=0, reused=0, linked=0, skipped_in_sections=0,
+            added=0, reused=0, linked=0, skipped_in_sections=0, fetched=0,
             next_cursor=page["next_cursor"],
             quota_reached=False,
         )
@@ -1556,7 +1578,8 @@ def import_pinterest_section():
                     "next_cursor": cursor if quota_reached else page["next_cursor"],
                     "quota_reached": quota_reached,
                     "skipped_in_sections": skipped_in_sections,
-                    "failed_images": failed_images
+                    "failed_images": failed_images,
+                    "fetched": len(page["pins"]),
                 }
         except (Exception, GeneratorExit) as error:
             try:

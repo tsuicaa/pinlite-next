@@ -197,6 +197,9 @@ def board_pin_page(source, board_id, *, section_id=None, cursor=None):
 
     data, bookmark = resource(name, source, options)
     feed = rows(data)
+    if cursor and not feed and bookmark in (None, "", "-end-", cursor):
+        data, bookmark = resource(name, source, options)
+        feed = rows(data)
     pins = []
 
     for row in feed:

@@ -177,6 +177,7 @@
         let added = 0;
         let linked = 0;
         let failedImages = 0;
+        let fetched = 0;
         let reason = "Import pass finished";
 
         submit.disabled = true;
@@ -230,6 +231,7 @@
                     }
 
                     added += page.added;
+                    fetched += page.fetched ?? 0;
                     updateProgress(added);
                     linked += page.linked;
                     failedImages += page.failed_images ?? 0;
@@ -258,10 +260,21 @@
                     ? " Only the previewed sections were processed"
                     : "";
 
+
+                const reported = board.reported_pin_count;
+                const shortFeed = reason === "Import pass finished"
+                    && board.sections.length === 0
+                    && !board.has_more_sections
+                    && reported != null
+                    && fetched < Number(reported);
+
+                if (shortFeed) reason = "Partial import";
+
                 status.innerHTML =
                     `<p><b>${reason}</b></p>`
                     + `<p>Created <b>${added} pins</b> and added <b>${linked} collection memberships</b></p>`
                     + `<p><small>${sectionNote} (Pinterest may return only part of a board. Refresh to see your collections)</small></p>`
+                    + `<p>Received ${fetched} supported pin entries. Pinterest reports ${reported ?? "an unknown number of"} pins.</p>`
                     + `<p>${failedImages} images could not be saved</p>`;
 
                 request = null;
