@@ -1124,6 +1124,9 @@ def cleanup_media(apply):
             if media is None:
                 continue
 
+            if db.scalar(select(Pin.id).where(Pin.media_id == media.id).limit(1)) is not None:
+                continue
+
             if media.storage_kind == "hosted":
                 delete_images([
                     key
