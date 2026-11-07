@@ -114,7 +114,8 @@ def overview():
         next_before=next_before,
         before=before,
         csrf_token=admin_csrf_token(),
-        health=read_server_health(),
+        health=read_snapshot("status.json", 3),
+        r2=read_snapshot("r2.json", 35),
     ), 200, {"Cache-Control": "no-store"}
 
 @admin.get("/reports")
@@ -201,3 +202,16 @@ def set_user_status(user_id):
         )
 
     return redirect(url_for("admin.overview"), code=303)
+
+def read_snapshot(filename, stale_after_minutes):
+    try:
+        path = Path("/var/lib/pinlite-health") / filename
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
+        collected_at = datetime.fromisoformat(snapshot["collected_at"])
+        snapshot["stale"] = (
+            datetime.now(timezone.utc) - collected_at
+            > timedelta(minutes=stale_after_minutes)
+        )
+        return snapshot
+    except (OSError, ValueError, KeyError, TypeError):
+        return None

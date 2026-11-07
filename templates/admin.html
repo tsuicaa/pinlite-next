@@ -23,8 +23,6 @@
                 <dd>{{ pins.get('public', 0) }}</dd>
                 <dt>Private pins</dt>
                 <dd>{{ pins.get('private', 0) }}</dd>
-                <dt>Pending reports</dt>
-                <dd>{{ pending_reports }}</dd>
                 <dt><a href="{{ url_for('admin.reports') }}">Pending reports</a></dt>
                 <dd>{{ pending_reports }}</dd>
             </dl>
@@ -54,7 +52,7 @@
                     <div role="cell">
                         {{ "Suspended" if account.is_suspended else "Active" }}
                     </div>
-                    <div role=""cell>
+                    <div role="" cell>
                         {% if not account.is_admin %}
                         <form method="post" action="{{ url_for('admin.set_user_status', user_id=account.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -120,6 +118,34 @@
             </div>
             {% else %}
             <p>Server health snapshot unavailable</p>
+            {% endif %}
+        </section>
+        <section class="panel">
+            <h2>R2 bucket</h2>
+
+            {% if r2 %}
+            <p>{{ r2.bucket }} · Collected {{ r2.collected_at }}{% if r2.stale %} · Stale{% endif %}</p>
+
+            <dl class="admin-metrics">
+                {% if r2.storage %}
+                <dt>Stored data</dt>
+                <dd>{{ "%.1f" | format(r2.storage["max"]["payloadSize"] / 1048576) }} MiB</dd>
+                <dt>Objects</dt>
+                <dd>{{ "{:,}".format(r2.storage["max"]["objectCount"]) }}</dd>
+                <dt>Storage measured</dt>
+                <dd>{{ r2.storage["dimensions"]["datetime"] }}</dd>
+                {% else %}
+                <dt>Storage</dt>
+                <dd>No measurement in the last 24 hours.</dd>
+                {% endif %}
+
+                <dt>Object reads (24h)</dt>
+                <dd>{{ "{:,}".format(r2.operations_24h.get("GetObject", 0)) }}</dd>
+                <dt>Object writes (24h)</dt>
+                <dd>{{ "{:,}".format(r2.operations_24h.get("PutObject", 0)) }}</dd>
+            </dl>
+            {% else %}
+            <p>R2 analytics snapshot unavailable.</p>
             {% endif %}
         </section>
     </main>
