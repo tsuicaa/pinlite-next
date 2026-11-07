@@ -83,6 +83,47 @@
             </p>
             {% endif %}
         </section>
+        <section class="panel">
+            <h2>Server</h2>
+            {% if health %}
+            <p>Collected {{ health.collected_at }}{% if health.stale %}. Stale{% endif %}</p>
+            <dl>
+                <dt>CPU usage</dt>
+                <dd>{{ health.cpu_percent }}%</dd>
+                <dt>RAM available</dt>
+                <dd>{{ "%.2f" | format(health.ram_available_bytes / 1073741824) }} /
+                    {{ "%.2f" | format(health.ram_total_bytes / 1073741824) }} GiB</dd>
+                <dt>Disk free</dt>
+                <dd>{{ "%.2f" | format(health.disk_free_bytes / 1073741824) }} /
+                    {{ "%.2f" | format(health.disk_total_bytes / 1073741824) }} GiB</dd>
+            </dl>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Unit</th>
+                        <th>State</th>
+                        <th>Result</th>
+                        <th>Last run</th>
+                        <th>Next run</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, unit in health.units.items() %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>{{ unit.get('ActiveState') or '-' }}</td>
+                        <td>{{ unit.get('Result') or '-' }}</td>
+                        <td>{{ unit.get('LastTriggerUSec') or unit.get('ExecMainExitTimestamp') or '—' }}</td>
+                        <td>{{ unit.get('NextElapseUSecRealtime') or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Server health snapshot unavailable</p>
+            {% endif %}
+        </section>
     </main>
 </body>
 

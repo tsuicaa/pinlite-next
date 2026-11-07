@@ -7,8 +7,22 @@ from storage import image_url
 from secrets import compare_digest, token_urlsafe
 
 from moderation import resolve_reports
+import json
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 admin = Blueprint("admin", __name__, url_prefix="/admin")
+
+def read_server_health():
+    try:
+        health = json.loads(
+            Path("/var/lib/pinlite-health/status.json").read_text(encoding="utf-8")
+        )
+        collected_at = datetime.fromisoformat(health["collected_at"])
+        health["stale"] = datetime.now(timezone.utc) - collected_at > timedelta(minutes=3)
+        return health
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 def admin_csrf_token():
     if "admin_csrf" not in session:
@@ -100,6 +114,7 @@ def overview():
         next_before=next_before,
         before=before,
         csrf_token=admin_csrf_token(),
+        health=read_server_health(),
     ), 200, {"Cache-Control": "no-store"}
 
 @admin.get("/reports")
