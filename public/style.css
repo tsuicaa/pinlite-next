@@ -831,6 +831,47 @@ progress::-moz-progress-bar {
   outline-offset: -3px;
 }
 
+.admin-grid {
+  overflow-x: auto;
+}
+
+.admin-grid--users {
+  --columns: minmax(8rem, 1fr) minmax(12rem, 2fr) 4rem 7rem 5rem 8rem;
+}
+
+.admin-grid--units {
+  --columns: minmax(14rem, 2fr) 5rem 5rem minmax(10rem, 1fr) minmax(10rem, 1fr);
+}
+
+.admin-grid-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.4rem;
+}
+
+.admin-grid-row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-grid-row form {
+  margin: 0;
+  text-align: left;
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+  gap: 0.4rem 1rem;
+}
+
+.admin-metrics dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 500px) { 
   #detail-image {
     max-height: inherit;

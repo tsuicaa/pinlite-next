@@ -14,7 +14,7 @@
         <p><a href="/">Back to PinLite</a></p>
         <section class="panel">
             <h2>Overview</h2>
-            <dl>
+            <dl class="admin-metrics">
                 <dt>Users</dt>
                 <dd>{{ users }}</dd>
                 <dt>Total pins</dt>
@@ -33,41 +33,42 @@
             <h2>Users</h2>
 
             {% if accounts %}
-            <table>
-                <thead>
-                    <tr>
-                        <th scope="col">Display name</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Pins</th>
-                        <th scope="col">Storage (MB)</th>
-                        <th scope="col">Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for account in accounts %}
-                    <tr>
-                        <td>{{ account.display_name }}</td>
-                        <td>{{ account.email }}</td>
-                        <td>{{ pin_counts.get(account.id, 0) }}</td>
-                        <td>{{ "%.1f" | format((storage_bytes.get(account.id) or 0) / 1048576) }}</td>
-                        <td>{{ "Admin" if account.is_admin else "User" }}</td>
-                        <td>
-                            {{ "Suspended" if account.is_suspended else "Active" }}
-                            {% if not account.is_admin %}
-                            <form method="post" action="{{ url_for('admin.set_user_status', user_id=account.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                {% if account.is_suspended %}
-                                <button type="submit" name="action" value="restore">Restore</button>
-                                {% else %}
-                                <button type="submit" name="action" value="suspend" class="red">Suspend</button>
-                                {% endif %}
-                            </form>
+            <div class="admin-grid admin-grid--users" role="table" aria-label="Users">
+                <div class="admin-grid-row" role="row">
+                    <strong role="columnheader">Display name</strong>
+                    <strong role="columnheader">Email</strong>
+                    <strong role="columnheader">Pins</strong>
+                    <strong role="columnheader">Storage (MiB)</strong>
+                    <strong role="columnheader">Role</strong>
+                    <strong role="columnheader">Status</strong>
+                    <strong role="columnheader">Action</strong>
+                </div>
+
+                {% for account in accounts %}
+                <div class="admin-grid-row" role="row">
+                    <div role="cell">{{ account.display_name }}</div>
+                    <div role="cell">{{ account.email }}</div>
+                    <div role="cell">{{ pin_counts.get(account.id, 0) }}</div>
+                    <div role="cell">{{ "%.1f" | format((storage_bytes.get(account.id) or 0) / 1048576) }}</div>
+                    <div role="cell">{{ "Admin" if account.is_admin else "User" }}</div>
+                    <div role="cell">
+                        {{ "Suspended" if account.is_suspended else "Active" }}
+                    </div>
+                    <div role=""cell>
+                        {% if not account.is_admin %}
+                        <form method="post" action="{{ url_for('admin.set_user_status', user_id=account.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            {% if account.is_suspended %}
+                            <button type="submit" name="action" value="restore">Restore</button>
+                            {% else %}
+                            <button type="submit" name="action" value="suspend" class="red">Suspend</button>
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
             {% else %}
             <p>No accounts on this page.</p>
             {% endif %}
@@ -92,34 +93,31 @@
                 <dd>{{ health.cpu_percent }}%</dd>
                 <dt>RAM available</dt>
                 <dd>{{ "%.2f" | format(health.ram_available_bytes / 1073741824) }} /
-                    {{ "%.2f" | format(health.ram_total_bytes / 1073741824) }} GiB</dd>
+                    {{ "%.2f" | format(health.ram_total_bytes / 1073741824) }} GB</dd>
                 <dt>Disk free</dt>
                 <dd>{{ "%.2f" | format(health.disk_free_bytes / 1073741824) }} /
-                    {{ "%.2f" | format(health.disk_total_bytes / 1073741824) }} GiB</dd>
+                    {{ "%.2f" | format(health.disk_total_bytes / 1073741824) }} GB</dd>
             </dl>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Unit</th>
-                        <th>State</th>
-                        <th>Result</th>
-                        <th>Last run</th>
-                        <th>Next run</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for name, unit in health.units.items() %}
-                    <tr>
-                        <td>{{ name }}</td>
-                        <td>{{ unit.get('ActiveState') or '-' }}</td>
-                        <td>{{ unit.get('Result') or '-' }}</td>
-                        <td>{{ unit.get('LastTriggerUSec') or unit.get('ExecMainExitTimestamp') or '—' }}</td>
-                        <td>{{ unit.get('NextElapseUSecRealtime') or '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="admin-grid admin-grid--units" role="table" aria-label="Server units">
+                <div class="admin-grid-row" role="row">
+                    <strong role="columnheader">Unit</strong>
+                    <strong role="columnheader">State</strong>
+                    <strong role="columnheader">Result</strong>
+                    <strong role="columnheader">Last run</strong>
+                    <strong role="columnheader">Next run</strong>
+                </div>
+
+                {% for name, unit in health.units.items() %}
+                <div class="admin-grid-row" role="row">
+                    <div role="cell">{{ name }}</div>
+                    <div role="cell">{{ unit.get('ActiveState') or '—' }}</div>
+                    <div role="cell">{{ unit.get('Result') or '—' }}</div>
+                    <div role="cell">{{ unit.get('LastTriggerUSec') or unit.get('ExecMainExitTimestamp') or '—' }}</div>
+                    <div role="cell">{{ unit.get('NextElapseUSecRealtime') or '—' }}</div>
+                </div>
+                {% endfor %}
+            </div>
             {% else %}
             <p>Server health snapshot unavailable</p>
             {% endif %}
