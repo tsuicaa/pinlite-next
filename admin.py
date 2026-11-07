@@ -10,6 +10,17 @@ from moderation import resolve_reports
 
 admin = Blueprint("admin", __name__, url_prefix="/admin")
 
+def admin_csrf_token():
+    if "admin_csrf" not in session:
+        session["admin_csrf"] = token_urlsafe(32)
+    return session["admin_csrf"]
+
+
+def require_admin_csrf():
+    expected = session.get("admin_csrf")
+    supplied = request.form.get("csrf_token", "")
+    if not expected or not compare_digest(expected.encode(), supplied.encode()):
+        abort(403)
 
 @admin.before_request
 def require_admin():
@@ -18,7 +29,7 @@ def require_admin():
         abort(403)
 
     with Session() as db:
-        allowed = db.scalar(select(User.is_admin).where(User.id == user_id))
+        allowed = db.scalar(select(User.is_admin).where(User.id == user_id, User.is_suspended.is_(False)))
 
     if not allowed:
         abort(403)
@@ -37,7 +48,7 @@ def overview():
             abort(400)
 
     user_query = (
-        select(User.id, User.email, User.display_name, User.is_admin)
+        select(User.id, User.email, User.display_name, User.is_admin, User.is_suspended)
         .order_by(User.id.desc())
         .limit(26)
     )
@@ -88,6 +99,7 @@ def overview():
         storage_bytes=storage_bytes,
         next_before=next_before,
         before=before,
+        csrf_token=admin_csrf_token(),
     ), 200, {"Cache-Control": "no-store"}
 
 @admin.get("/reports")
@@ -110,8 +122,7 @@ def reports():
             .limit(51)
         ).all()
 
-    if "admin_csrf" not in session:
-            session["admin_csrf"] = token_urlsafe(32)
+    csrf_token=admin_csrf_token()
 
     grouped_reports = {}
     for row in rows[:50]:
@@ -120,17 +131,14 @@ def reports():
     return render_template(
         "admin-reports.html",
         report_groups=grouped_reports.values(),
-        csrf_token=session["admin_csrf"],
+        csrf_token=admin_csrf_token(),
         has_more=len(rows) > 50,
         image_url=image_url,
     ), 200, {"Cache-Control": "no-store"}
 
 @admin.post("/reports/<int:pin_id>/resolve")
 def resolve_report_group(pin_id):
-    expected = session.get("admin_csrf")
-    supplied = request.form.get("csrf_token", "")
-    if not expected or not compare_digest(expected.encode(), supplied.encode()):
-        abort(403)
+    require_admin_csrf()
 
     action = request.form.get("action")
     if action not in ("dismiss", "unpublish"):
@@ -149,3 +157,32 @@ def resolve_report_group(pin_id):
         )
 
     return redirect(url_for("admin.reports"), code=303)
+
+
+@admin.post("/users/<int:user_id>/status")
+def set_user_status(user_id):
+    require_admin_csrf()
+    action = request.form.get("action")
+    if action not in ("suspend", "restore"):
+        abort(400)
+    if not 0 < user_id <= 9223372036854775807:
+        abort(404)
+
+    suspended = action == "suspend"
+    with Session.begin() as db:
+        account = db.get(User, user_id, with_for_update=True)
+        if account is None:
+            abort(404)
+        if account.is_admin:
+            abort(403)
+
+        changed = account.is_suspended != suspended
+        account.is_suspended = suspended
+
+    if changed:
+        current_app.logger.warning(
+            "Account status: admin=%s user=%s action=%s",
+            session["user_id"], user_id, action,
+        )
+
+    return redirect(url_for("admin.overview"), code=303)

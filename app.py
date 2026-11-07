@@ -113,6 +113,20 @@ def collection_previews(db, collection_id, user_id):
     ]
 
 @app.before_request
+def clear_suspended_session():
+    user_id = login_session.get("user_id")
+    if user_id is None or not request.path.startswith("/api/"):
+        return
+
+    with Session() as db:
+        suspended = db.scalar(
+            select(User.is_suspended).where(User.id == user_id)
+        )
+
+    if suspended is not False:
+        login_session.clear()
+
+@app.before_request
 def require_api_json():
     if not request.path.startswith("/api/"):
         return
@@ -425,6 +439,9 @@ def login():
             else DUMMY_PASSWORD_HASH
         )
         valid = check_password_hash(stored_hash, password)
+
+        if user.is_suspended:
+            return jsonify(error="This account is suspended"), 403
 
         if user is None or not user.password_hash or not valid:
             return jsonify(error="Invalid email or password"), 401

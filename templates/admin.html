@@ -51,6 +51,19 @@
                         <td>{{ pin_counts.get(account.id, 0) }}</td>
                         <td>{{ "%.1f" | format((storage_bytes.get(account.id) or 0) / 1048576) }}</td>
                         <td>{{ "Admin" if account.is_admin else "User" }}</td>
+                        <td>
+                            {{ "Suspended" if account.is_suspended else "Active" }}
+                            {% if not account.is_admin %}
+                            <form method="post" action="{{ url_for('admin.set_user_status', user_id=account.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                {% if account.is_suspended %}
+                                <button type="submit" name="action" value="restore">Restore</button>
+                                {% else %}
+                                <button type="submit" name="action" value="suspend" class="red">Suspend</button>
+                                {% endif %}
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
