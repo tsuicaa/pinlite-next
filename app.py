@@ -204,19 +204,24 @@ def public_pins():
             | Pin.id.in_(matching_tag_pins)
         )
         label_terms = func.websearch_to_tsquery("english", search)
-        label_match = (
-            (Media.discovery_labels != "")
-            & func.to_tsvector("english", Media.discovery_labels).bool_op("@@")(label_terms)
-        )
-
         compact_query = "".join(search.casefold().split())
-        compact_labels = func.string_to_array(
-            func.replace(Media.discovery_labels, " ", ""),
-            "\n",
-        )
-        label_match = label_match | func.array_position(
-            compact_labels, compact_query
-        ).is_not(None)
+
+        label_matches = []
+        for labels in (Media.discovery_labels, Media.wd_labels):
+            text_match = (
+                (labels != "")
+                & func.to_tsvector("english", labels).bool_op("@@")(label_terms)
+            )
+            compact_labels = func.string_to_array(
+                func.replace(labels, " ", ""),
+                "\n",
+            )
+            compact_match = func.array_position(
+                compact_labels, compact_query
+            ).is_not(None)
+            label_matches.append(text_match | compact_match)
+
+        label_match = label_matches[0] | label_matches[1]
 
         rank = case((direct_match, 1), else_=0)
 
