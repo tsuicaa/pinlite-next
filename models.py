@@ -89,6 +89,7 @@ class Media(Base):
     )
     thumbnail_key: Mapped[str | None] = mapped_column(Text)
     discovery_labels: Mapped[str | None] = mapped_column(Text)
+    wd_labels: Mapped[str | None] = mapped_column(Text)
     sha256: Mapped[str | None] = mapped_column(
         String(64), unique=True
     )
