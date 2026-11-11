@@ -284,8 +284,10 @@ def pin_detail(pin_id):
         if row is None:
             return jsonify(error="Pin not found"), 404
 
-        result = serialize_pin(*row)
+        pin, media = row
+        result = serialize_pin(pin, media)
         result["tags"] = get_tags(session, pin_id)
+        result["wd_labels"] = (media.wd_labels or "").splitlines()
         return jsonify(result)
 
 @app.post("/api/register")
