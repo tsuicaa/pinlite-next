@@ -288,6 +288,7 @@ def pin_detail(pin_id):
         result = serialize_pin(pin, media)
         result["tags"] = get_tags(session, pin_id)
         result["wd_labels"] = (media.wd_labels or "").splitlines()
+        result["discovery_labels"] = (media.discovery_labels or "").splitlines()
         return jsonify(result)
 
 @app.post("/api/register")
