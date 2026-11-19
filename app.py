@@ -376,7 +376,7 @@ def update_profile():
     name = data.get("display_name") if isinstance(data, dict) else None
 
     if not isinstance(name, str) or not 1 <= len(name.strip()) <= 32:
-        return jsonify(error="Display name must be 1–32 characters"), 400
+        return jsonify(error="Display name must be 1-32 characters"), 400
 
     with Session.begin() as db:
         user = db.get(User, user_id)
@@ -406,7 +406,7 @@ def change_password():
         return jsonify(error="Current password is incorrect"), 400
 
     if not isinstance(new, str) or not 8 <= len(new) <= 64:
-        return jsonify(error="New password must be 8–64 characters"), 400
+        return jsonify(error="New password must be 8-64 characters"), 400
 
     with Session.begin() as db:
         user = db.get(User, user_id, with_for_update=True)
@@ -470,6 +470,35 @@ def login():
 def logout():
     login_session.clear()
     return jsonify(user=None)
+
+@app.cli.command("reset-password")
+@click.argument("email")
+@click.password_option(
+    prompt="New password",
+    confirmation_prompt=True,
+)
+def reset_password(email, password):
+    email = email.strip().lower()
+
+    if not 8 <= len(password) <= 64:
+        raise click.ClickException("Password must be 8-64 characters")
+
+    password_hash = generate_password_hash(password)
+
+    with Session.begin() as db:
+        user = db.scalar(
+            select(User).where(User.email == email).with_for_update()
+        )
+
+        if user is None:
+            raise click.ClickException("Account not found")
+
+        if user.is_suspended:
+            raise click.ClickException("Account is suspended")
+
+        user.password_hash = password_hash
+
+    click.echo(f"Password reset for {email}")
 
 
 @app.get("/api/collections")
@@ -1014,7 +1043,7 @@ def create_uploaded_pin():
     file = request.files.get("image")
 
     if not 1 <= len(title) <= 300:
-        return jsonify(error="Title must be 1–300 characters"), 400
+        return jsonify(error="Title must be 1-300 characters"), 400
 
     description = request.form.get("description", "")
 
