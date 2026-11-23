@@ -10,7 +10,9 @@
     const mode = get("new-pin-mode");
     const file = get("new-pin-file");
     const imageUrl = get("new-pin-image");
-    const description = get("new-pin-description").value;
+    const source = get("new-pin-source");
+    const titleInput = get("new-pin-title");
+    const visibilityInput = get("new-pin-visibility");
     const collection = get("new-pin-collection");
     const progress = get("create-pin-progress");
     const dropZone = get("drop-zone");
@@ -18,6 +20,70 @@
     const clear = get("clear-btn");
 
     let creating = false;
+    let captureAccount = null;
+    let pendingCapture = readCapture();
+    let savingCapture = false;
+
+    function captureUrl(value, protocols) {
+        try {
+            const url = new URL(value);
+            if (
+                protocols.includes(url.protocol)
+                && !url.username
+                && !url.password
+                && url.href.length <= 4096
+            ) {
+                return url.href;
+            }
+        } catch {
+            return "";
+        }
+        return "";
+    }
+
+    function readCapture() {
+        const params = new URLSearchParams(location.hash.slice(1));
+        if (!params.has("save-image")) return null;
+
+        const source = captureUrl(params.get("source"), ["http:", "https:"]);
+        if (!source) return null;
+
+        return {
+            image: captureUrl(params.get("save-image"), ["https:"]),
+            source,
+            title: params.get("title")?.trim().slice(0, 300)
+                || new URL(source).hostname,
+        };
+    }
+
+    function captureCollectionKey() {
+        return `pinlite:last-capture-collection:${captureAccount}`;
+    }
+
+    function refreshCollectionOptions() {
+        collection.replaceChildren(
+            new Option("No collection", ""),
+            ...[...get("pin-folder").options].map(option =>
+                new Option(option.textContent, option.value)
+            )
+        );
+    }
+
+    function restoreCaptureCollection() {
+        if (!savingCapture) return;
+        refreshCollectionOptions();
+
+        try {
+            const previous = localStorage.getItem(captureCollectionKey());
+            if ([...collection.options].some(option => option.value === previous)) {
+                collection.value = previous;
+            }
+        } catch {
+            // save works whe n storage is unavailable
+        }
+    }
+
+    document.addEventListener("collections-loaded", restoreCaptureCollection);
 
     function updateMode() {
         const uploading = mode.value === "upload";
@@ -72,7 +138,7 @@
 
         const selected = files[0];
 
-        if (!["image/jpeg", "image/png", "image/jpeg"].includes(selected.type)) {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(selected.type)) {
             status.textContent = "Accepted formats are JPEG, PNG, WebP";
             return;
         }
@@ -99,15 +165,48 @@
     });
 
     open.addEventListener("click", () => {
-        collection.replaceChildren(
-            new Option("No collection", ""),
-            ...[...get("pin-folder").options].map(option =>
-                new Option(option.textContent, option.value)
-            )
-        );
-
+        refreshCollectionOptions();
         status.textContent = "";
         dialog.showModal();
+    });
+
+    function openCapture(user) {
+        if (!pendingCapture) return;
+
+        if (!user) {
+            get("account").hidden = false;
+            get("account-status").textContent = "Sign in to save this image";
+            return;
+        }
+
+        const capture = pendingCapture;
+        pendingCapture = null;
+        history.replaceState(history.state, "", location.pathname + location.search);
+
+        savingCapture = true;
+        captureAccount = user.id;
+        titleInput.value = capture.title;
+        source.value = capture.source;
+        visibilityInput.value = "private";
+        mode.value = capture.image ? "url" : "upload";
+        imageUrl.value = capture.image;
+        updateMode();
+        restoreCaptureCollection();
+
+        if (!capture.image) {
+            status.textContent = "Save the image to your device, then upload it here";
+        }
+
+        dialog.showModal();
+    }
+
+    dialog.addEventListener("close", () => {
+        if (!savingCapture) return;
+
+        savingCapture = false;
+        form.reset();
+        clearPreview();
+        updateMode();
     });
 
     close.addEventListener("click", () => {
@@ -130,6 +229,7 @@
         if (!event.detail) {
             dialog.close();
         }
+        openCapture(event.detail);
     });
 
     async function convertImage(file) {
@@ -268,9 +368,11 @@
         }
 
         const version = accountVersion;
-        const title = get("new-pin-title").value.trim();
-        const sourceUrl = get("new-pin-source").value.trim();
-        const visibility = get("new-pin-visibility").value;
+        const title = titleInput.value.trim();
+        const description = get("new-pin-description").value;
+        const sourceUrl = source.value.trim();
+        const visibility = visibilityInput.value;
+        const collectionKey = savingCapture ? captureCollectionKey() : null;
         const collectionId = collection.value;
         const externalUrl = imageUrl.value.trim();
         const tags = get("new-pin-tags").value
@@ -331,6 +433,14 @@
             
             if (version !== accountVersion) return;
             
+            if (collectionKey) {
+                try {
+                    localStorage.setItem(collectionKey, collectionId);
+                } catch {
+                    // pin already saved
+                }
+            }
+
             location.href = `/?view=my-pins&pin=${encodeURIComponent(result.pin.id)}`;
         } catch (error) {
             if (version === accountVersion) {

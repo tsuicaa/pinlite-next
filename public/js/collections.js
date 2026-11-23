@@ -339,6 +339,7 @@
       }));
 
       updateSaveControls();
+      document.dispatchEvent(new Event("collections-loaded"));
       status.textContent = roots.length ? "" : "No collections yet";
     } catch (error) {
       if (version === accountVersion) {
