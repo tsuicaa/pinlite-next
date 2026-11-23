@@ -186,70 +186,71 @@
             </section>
         </section>
         <dialog id="create-pin-dialog" class="panel">
-            <button id="create-pin-close" type="button">X</button>
-            <h2>Create a pin</h2>
-            <hr>
-            <form id="create-pin-form" hidden>
-                <input id="new-pin-title" type="text" maxlength="300" placeholder="Title">
-                <br><br>
-                <p>
-                    <label for="new-pin-description">Description (optional)</label><br>
-                    <textarea id="new-pin-description" maxlength="10000" rows="4"></textarea>
-                </p>
-                <select id="new-pin-mode">
-                    <option value="upload">Upload image</option>
-                    <option value="url">Image URL</option>
-                </select>
-                <br><br>
-                <div id="new-pin-upload-field">
-                    <div id="drop-zone">
-                        <label for="new-pin-file">
-                            Drop an image here, or click to choose.<br>
-                            <small>(JPEG, PNG or static WebP. Maximum 10 MB)</small>
-                        </label>
-                        <input type="file" id="new-pin-file" required accept="image/jpeg,image/png,image/webp">
-                        <div id="preview"></div>
+            <div class="dialog-inner">
+                <button id="create-pin-close" type="button">X</button>
+                <h2>Create a pin</h2>
+                <hr>
+                <form id="create-pin-form" hidden>
+                    <input id="new-pin-title" type="text" maxlength="300" placeholder="Title">
+                    <br><br>
+                    <p>
+                        <label for="new-pin-description">Description (optional)</label><br>
+                        <textarea id="new-pin-description" maxlength="10000" rows="4"></textarea>
+                    </p>
+                    <select id="new-pin-mode">
+                        <option value="upload">Upload image</option>
+                        <option value="url">Image URL</option>
+                    </select>
+                    <br><br>
+                    <div id="new-pin-upload-field">
+                        <div id="drop-zone">
+                            <label for="new-pin-file">
+                                Drop an image here, or click to choose.<br>
+                                <small>(JPEG, PNG or static WebP. Maximum 10 MB)</small>
+                            </label>
+                            <input type="file" id="new-pin-file" required accept="image/jpeg,image/png,image/webp">
+                            <div id="preview"></div>
+                        </div>
+
+                        <button id="clear-btn" type="button">Clear</button>
                     </div>
 
-                    <button id="clear-btn" type="button">Clear</button>
-                </div>
+                    <div id="new-pin-url-field" hidden>
+                        <label for="new-pin-image">Direct image URL</label><br>
+                        <input id="new-pin-image" type="url" maxlength="4096" placeholder="https://example.com/image.jpg"
+                            disabled>
+                        <img id="pin-url-preview" alt="Image preview" hidden>
+                    </div>
 
-                <p id="new-pin-url-field" hidden>
-                    <label for="new-pin-image">Direct image URL</label><br>
-                    <input id="new-pin-image" type="url" maxlength="4096" placeholder="https://example.com/image.jpg"
-                        disabled>
-                </p>
+                    <p>
+                        <label for="new-pin-source">Source link (optional)</label><br>
+                        <input id="new-pin-source" type="url" maxlength="4096"
+                            placeholder="https://example.com/original-post">
+                    </p>
 
-                <p>
-                    <label for="new-pin-source">Source link (optional)</label><br>
-                    <input id="new-pin-source" type="url" maxlength="4096"
-                        placeholder="https://example.com/original-post">
-                </p>
-
-                <p>
-                    <label for="new-pin-visibility">Visibility</label>
-                    <select id="new-pin-visibility">
-                        <option value="private">Private</option>
-                        <option value="public" selected>Public</option>
-                    </select>
-                </p>
-                <p>
-                    <label for="new-pin-tags">Tags</label><br>
-                    <input id="new-pin-tags" type="text" maxlength="2000" placeholder="robots, concept art">
-                    <br><small>Separate tags with commas (maximum 20 tags)</small>
-                </p>
-                <p>
-                    <label for="new-pin-collection">Collection</label>
-                    <select id="new-pin-collection">
-                        <option value="">No collection</option>
-                    </select>
-                </p>
-
-                <button type="submit"><i class="icon pushpin"></i>Create pin</button>
-            </form>
-
-            <p id="create-pin-status" role="status">Checking sign-in...</p>
-            <progress id="create-pin-progress" max="100" value="70" hidden></progress>
+                    <p>
+                        <label for="new-pin-visibility">Visibility</label>
+                        <select id="new-pin-visibility">
+                            <option value="private">Private</option>
+                            <option value="public" selected>Public</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label for="new-pin-tags">Tags</label><br>
+                        <input id="new-pin-tags" type="text" maxlength="2000" placeholder="robots, concept art">
+                        <br><small>Separate tags with commas (maximum 20 tags)</small>
+                    </p>
+                    <p>
+                        <label for="new-pin-collection">Collection</label>
+                        <select id="new-pin-collection">
+                            <option value="">No collection</option>
+                        </select>
+                    </p>
+                    <hr>
+                    <p id="create-pin-status" role="status">Checking sign-in...</p>
+                    <button type="submit"><i class="icon pushpin"></i>Create pin</button>
+                </form>
+            </div>
         </dialog>
         <dialog id="pinterest-import-dialog" class="panel">
             <button id="pinterest-import-close" type="button">X</button>

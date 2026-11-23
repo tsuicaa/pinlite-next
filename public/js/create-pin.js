@@ -14,10 +14,53 @@
     const titleInput = get("new-pin-title");
     const visibilityInput = get("new-pin-visibility");
     const collection = get("new-pin-collection");
-    const progress = get("create-pin-progress");
     const dropZone = get("drop-zone");
     const preview = get("preview");
     const clear = get("clear-btn");
+    const urlPreview = get("pin-url-preview");
+    let previewObjectUrl = "";
+    let previewVersion = 0;
+
+    function clearUrlPreview() {
+        previewVersion++;
+        urlPreview.hidden = true;
+        urlPreview.removeAttribute("src");
+        if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = "";
+    }
+
+    imageUrl.addEventListener("input", clearUrlPreview);
+    mode.addEventListener("change", clearUrlPreview);
+    dialog.addEventListener("close", clearUrlPreview);
+    document.addEventListener("account-change", clearUrlPreview);
+
+    async function showUrlPreview() {
+        clearUrlPreview();
+
+        const url = imageUrl.value.trim();
+        if (!url || !imageUrl.validity.valid) return;
+
+        const version = previewVersion;
+        status.textContent = "Loading preview...";
+
+        try {
+            const image = await downloadImage(url);
+            if (version !== previewVersion) return;
+
+            previewObjectUrl = URL.createObjectURL(image);
+            urlPreview.src = previewObjectUrl;
+            await urlPreview.decode();
+            if (version !== previewVersion) return;
+
+            urlPreview.hidden = false;
+            status.textContent = "";
+        } catch (error) {
+            if (version !== previewVersion) return;
+
+            clearUrlPreview();
+            status.textContent = error.message;
+        }
+    };
 
     let creating = false;
     let captureAccount = null;
@@ -198,7 +241,13 @@
         }
 
         dialog.showModal();
+        if (capture.image) {
+            void showUrlPreview();
+        }
     }
+
+
+    
 
     dialog.addEventListener("close", () => {
         if (!savingCapture) return;
@@ -224,7 +273,6 @@
         submit.disabled = false;
         status.textContent = event.detail ? "" : "Sign in to create a pin";
         open.hidden = !event.detail;
-        progress.hidden = true;
 
         if (!event.detail) {
             dialog.close();
@@ -382,8 +430,6 @@
 
         creating = true;
         submit.disabled = true;
-        progress.hidden = false;
-        progress.removeAttribute("value");
 
         try {
             if (!uploading) status.textContent = "Downloading image…";
@@ -416,17 +462,14 @@
                     if (version !== accountVersion) return;
 
                     if (percent === null) {
-                        progress.removeAttribute("value");
                         status.textContent = "Uploading...";
                     } else {
-                        progress.value = percent;
                         status.textContent = `Uploading: ${percent}%`;
                     }
                 },
                 () => {
                     if (version !== accountVersion) return;
 
-                    progress.removeAttribute("value");
                     status.textContent = "Finishing...";
                 }
             );
@@ -451,7 +494,6 @@
 
             if (version === accountVersion) {
                 submit.disabled = false;
-                progress.hidden = true;
             }
         }
     });
