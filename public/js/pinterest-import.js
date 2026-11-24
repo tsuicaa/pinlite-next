@@ -13,6 +13,7 @@
     const dialog = get("pinterest-import-dialog");
     const open = get("pinterest-import-open");
     const close = get("pinterest-import-close");
+    
     open.addEventListener("click", () => dialog.showModal());
     close.addEventListener("click", () => {
         if (stop.hidden) dialog.close();

@@ -285,6 +285,9 @@
             </form>
         </dialog>
         <dialog id="settings-dialog" class="panel">
+            <form class="close-dialog" method="dialog">
+                <button type="submit">X</button>
+            </form>
             <h2 id="settings-title">Display settings</h2>
             <hr>
             <p>
@@ -309,11 +312,12 @@
                     <option value="large">Large</option>
                 </select>
             </p>
-            <form method="dialog">
-                <button type="submit">Done</button>
-            </form>
         </dialog>
         <dialog id="account-settings-dialog" class="panel">
+            <div class="dialog-inner">
+            <form class="close-dialog" method="dialog">
+                <button type="submit">X</button>
+            </form>
             <h2 id="account-settings-title">Account settings</h2>
             <hr>
             <p id="account-usage-status" role="status"></p>
@@ -331,11 +335,12 @@
                 <span id="account-storage-usage"></span>
             </p>
             </div>
-
+            <hr>
             <form id="account-profile-form">
                 <label for="profile-display-name">Display name</label>
                 <input id="profile-display-name" type="text" autocomplete="nickname"
                     maxlength="32" required>
+                    <br><br>
                 <button type="submit">Save name</button>
             </form>
 
@@ -356,13 +361,24 @@
                         autocomplete="new-password" minlength="8" maxlength="64" required>
                 </p>
                 <button type="submit">Change password</button>
-            </form>
-
+            </form>            
             <p id="account-settings-status" role="status"></p>
+            <hr>
 
-            <form method="dialog">
-                <button type="submit">Done</button>
+            <form id="account-delete-form">
+                <h3>Delete account</h3>
+                <p>This permanently deletes your account, collections, and pins you created.</p>
+
+                <label for="settings-delete-password">Current password</label><br>
+                <input id="settings-delete-password" type="password"
+                    autocomplete="current-password" maxlength="64" required>
+                <br><br>
+                <button type="submit">Delete my account</button>
+                <p id="account-delete-status" role="status"></p>
             </form>
+
+            
+            </div>
         </dialog>
         <dialog id="report-dialog" class="panel" aria-labelledby="report-title">
             <h2 id="report-title">Report pin</h2>
@@ -404,7 +420,7 @@
             <p id="feed-count"></p>
         </div>
         <div id="loading-indicator" hidden>
-            <img src="loading.gif" />
+            <img src="static/img/loading.gif" />
         </div>
         <div id="grid" class="grid"></div>
         <div id="sentinel">

@@ -102,7 +102,7 @@ input {
   pointer-events: none;
 }
 
-dialog .panel {
+dialog.panel {
   position: fixed;
 }
 
@@ -668,7 +668,7 @@ dialog {
 }
 
 #settings-dialog, #account-settings-dialog, #report-dialog {
-  width: min(300px, calc(100% - 32px));
+  width: min(360px, calc(100% - 32px));
 }
 
 dialog::backdrop {
@@ -679,15 +679,29 @@ dialog::backdrop {
   width: 100%
 }
 
-#create-pin-dialog {
+#create-pin-dialog, #account-settings-dialog {
   overflow: hidden;
   padding: 0;
 }
 
-#create-pin-dialog > .dialog-inner {
+.dialog-inner {
   max-height: calc(100dvh - 4rem);
   overflow: auto;
   padding: 12px;
+  container-type: scroll-state;
+}
+
+form.close-dialog {
+  margin: 0;
+  position: absolute;
+  right: 12px;
+}
+
+
+@container scroll-state(scrollable: bottom) {
+  form.close-dialog {
+    right: 22px;
+  }
 }
 
 #create-pin-close, #pinterest-import-close{

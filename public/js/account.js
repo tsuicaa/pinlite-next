@@ -14,6 +14,10 @@
     const profileForm = get("account-profile-form");
     const passwordForm = get("account-password-form");
     const profileName = get("profile-display-name");
+    const deleteForm = get("account-delete-form");
+    const deletePassword = get("settings-delete-password");
+    const deleteStatus = get("account-delete-status");
+    const deleteButton = deleteForm.querySelector('button[type="submit"]');
 
 
     let registering = false;
@@ -162,8 +166,37 @@
         loadUsage();
     });
 
-    settings.addEventListener("close", () => passwordForm.reset());
+    settings.addEventListener("close", () => {
+        passwordForm.reset()
+        deleteForm.reset();
+        deleteStatus.textContent = "";
+    });
 
+    deleteForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const confirmed = window.confirm(
+            "Permanently delete your account, collections, and pins you created? "
+            + "Pins you created will also disappear from other users' collections. "
+            + "This cannot be undone."
+        );
+
+        if (!confirmed) return;
+
+        deleteButton.disabled = true;
+        deleteStatus.textContent = "Deleting account...";
+
+        try {
+            await api("me/delete", { current_password: deletePassword.value });
+            location.replace("/");
+        } catch (error) {
+            deleteForm.reset();
+            deleteStatus.textContent = error.message;
+            deletePassword.focus();
+        } finally {
+            deleteButton.disabled = false;
+        }
+    });
     profileForm.addEventListener("submit", async event => {
         event.preventDefault();
         const button = profileForm.querySelector("button");

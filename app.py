@@ -420,6 +420,49 @@ def change_password():
 
     return jsonify(ok=True)
 
+@app.post("/api/me/delete")
+def delete_my_account():
+    user_id = login_session.get("user_id")
+    if user_id is None:
+        return jsonify(error="Sign in first"), 401
+
+    data = request.get_json()
+    password = data.get("current_password") if isinstance(data, dict) else None
+
+    if not isinstance(password, str) or not 8 <= len(password) <= 64:
+        return jsonify(error="Current password is incorrect"), 400
+
+    with Session.begin() as db:
+        user = db.get(User, user_id, with_for_update=True)
+        if user is None:
+            login_session.clear()
+            return jsonify(error="Sign in first"), 401
+
+        if not user.password_hash or not check_password_hash(
+            user.password_hash, password
+        ):
+            return jsonify(error="Current password is incorrect"), 400
+
+        owned_collections = select(Collection.id).where(
+            Collection.owner_id == user_id
+        )
+
+        db.execute(
+            update(Collection)
+            .where(
+                Collection.owner_id != user_id,
+                Collection.parent_id.in_(owned_collections),
+            )
+            .values(parent_id=None)
+        )
+
+        db.execute(delete(Collection).where(Collection.owner_id == user_id))
+        db.execute(delete(Pin).where(Pin.creator_id == user_id))
+        db.delete(user)
+
+    login_session.clear()
+    return jsonify(deleted=True)
+
 
 @app.post("/api/login")
 def login():
