@@ -3,6 +3,7 @@ const $ = (id) => document.getElementById(id);
 const grid = document.getElementById("grid");
 const status = document.getElementById("status");
 const loadMore = document.getElementById("load-more");
+const browserExtension = document.getElementById("browser-extension");
 
 const cards = new Map();
 
@@ -532,6 +533,32 @@ $("bulk-pin-delete").addEventListener("click", async () => {
         deletingPins = false;
         updateBulkControls();
     }
+});
+
+browserExtension.addEventListener("click", () => {
+  if (navigator.userAgentData?.brands) {
+    const isChromium = navigator.userAgentData.brands.some(
+      (brand) => brand.brand === 'Chromium'
+    );
+    if (isChromium)
+        window.open(
+        'https://chromewebstore.google.com/detail/save-to-pinlite/mllkemdjhdbedgohekmnglmpnpmladei',
+        '_blank', 'noopener,noreferrer');;
+  }
+
+  const ua = navigator.userAgent;
+
+  if (/Chrome|Chromium|Edg|OPR|CriOS/i.test(ua) && !/Firefox|FxiOS/i.test(ua)) 
+    window.open(
+        'https://chromewebstore.google.com/detail/save-to-pinlite/mllkemdjhdbedgohekmnglmpnpmladei',
+        '_blank', 'noopener,noreferrer');
+  
+
+  if (/Firefox|FxiOS/i.test(ua) || typeof InstallTrigger !== 'undefined')
+    window.open(
+        'https://addons.mozilla.org/en-US/firefox/addon/save-to-pinlite/',
+        '_blank', 'noopener,noreferrer');
+
 });
 
 setupMasonry(relatedGrid);
