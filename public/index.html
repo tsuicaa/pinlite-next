@@ -181,8 +181,9 @@
             <section id="related-pins" hidden>
                 <h2>Related pins</h2>
                 <div id="related-grid" class="grid"></div>
+                <div id="related-sentinel" style="height: 1px"></div>
                 <p id="related-status" role="status"></p>
-                <button id="related-more" type="button" hidden>Load more</button>
+                <button id="related-more" type="button" hidden>Retry</button>
             </section>
         </section>
         <dialog id="create-pin-dialog" class="panel">
@@ -423,8 +424,8 @@
             <img src="static/img/loading.gif" />
         </div>
         <div id="grid" class="grid"></div>
-        <div id="sentinel">
-            <p id="status" role="status"></p><button id="load-more" hidden>Load more</button>
+        <div id="sentinel" style="min-height: 1px">
+            <p id="status" role="status"></p><button id="load-more" hidden>Retry</button>
         </div>
         <noscript>This website needs JavaScript to search and show pins.</noscript>
     </main>

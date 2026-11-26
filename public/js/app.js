@@ -12,6 +12,7 @@ let feedPath = null;
 let feedController = null;
 
 function resetFeed() {
+    feedObserver.disconnect();
     feedController?.abort();
     feedController = null;
     feedPath = null;
@@ -81,6 +82,9 @@ function renderPin(pin) {
 async function loadPins() {
     if (feedController || !feedPath) return;
 
+    feedObserver.disconnect();
+    loadMore.hidden = true;
+    let loaded = false;
     const controller = new AbortController();
     feedController = controller;
     loadMore.disabled = true;
@@ -114,7 +118,7 @@ async function loadPins() {
         if (selectingPins) updateBulkControls();
         cursor = data.next_cursor;
 
-        loadMore.hidden = !cursor;
+        loaded = true;
         status.textContent = grid.childElementCount ? "" : "No pins yet";
     } catch (error) {
         if (!controller.signal.aborted) {
@@ -125,6 +129,9 @@ async function loadPins() {
         if (feedController === controller) {
             feedController = null;
             loadMore.disabled = false;
+            if (loaded && cursor && !grid.hidden) {
+                feedObserver.observe($("sentinel"));
+            }
         }
     }
 }
@@ -336,6 +343,7 @@ let relatedController = null;
 let relatedCursor = null;
 
 function resetRelated() {
+    relatedObserver.disconnect();
     relatedController?.abort();
     relatedController = null;
     relatedCursor = null;
@@ -349,6 +357,9 @@ function resetRelated() {
 async function loadRelated(pinId) {
     if (relatedController) return;
 
+    relatedObserver.disconnect();
+    relatedMore.hidden = true;
+    let loaded = false;
     const controller = new AbortController();
     relatedController = controller;
     relatedMore.disabled = true;
@@ -369,8 +380,9 @@ async function loadRelated(pinId) {
 
         relatedGrid.append(...result.pins.map(renderPin));
         relatedCursor = result.next_cursor;
-        relatedSection.hidden = !relatedGrid.childElementCount;
-        relatedMore.hidden = !relatedCursor;
+        relatedSection.hidden =
+            !relatedGrid.childElementCount && !relatedCursor;
+        loaded = true;
     } catch {
         if (!controller.signal.aborted) {
             relatedSection.hidden = false;
@@ -381,6 +393,9 @@ async function loadRelated(pinId) {
         if (relatedController === controller) {
             relatedController = null;
             relatedMore.disabled = false;
+            if (loaded && relatedCursor && !relatedSection.hidden) {
+                relatedObserver.observe($("related-sentinel"));
+            }
         }
     }
 }
@@ -521,4 +536,28 @@ $("bulk-pin-delete").addEventListener("click", async () => {
 
 setupMasonry(relatedGrid);
 setupMasonry(grid);
+const feedObserver = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) {
+        if (cursor && !grid.hidden && !feedController) {
+            feedObserver.disconnect();
+            loadPins();
+        }
+    }
+}, { rootMargin: "0px 0px 600px 0px" });
+
+const relatedObserver = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) {
+        const pinId = new URLSearchParams(location.search).get("pin");
+
+        if (
+            pinId
+            && relatedCursor
+            && !relatedSection.hidden
+            && !relatedController
+        ) {
+            relatedObserver.disconnect();
+            loadRelated(pinId);
+        }
+    }
+}, { rootMargin: "0px 0px 600px 0px" });
 showRoute();
